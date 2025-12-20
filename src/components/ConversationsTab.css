@@ -91,7 +91,13 @@
 .empty-conversations {
   text-align: center;
   padding: 3rem 1rem;
-  color: #94a3b8;
+  color: #cbd5e1;
+}
+
+.empty-conversations p {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
 }
 
 .empty-conversations div {
@@ -125,7 +131,7 @@
 
 .conversation-phone {
   font-weight: 600;
-  color: #e2e8f0;
+  color: #f1f5f9;
   font-size: 0.875rem;
 }
 
@@ -134,7 +140,7 @@
 }
 
 .conversation-item-preview {
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
   overflow: hidden;
@@ -143,7 +149,7 @@
 }
 
 .conversation-item-time {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.75rem;
 }
 
@@ -177,7 +183,7 @@
 }
 
 .empty-state p {
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 .detail-header {
@@ -196,7 +202,7 @@
 
 .detail-header-info p {
   margin: 0;
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 0.875rem;
 }
 
@@ -235,7 +241,8 @@
 .no-messages {
   text-align: center;
   padding: 3rem 1rem;
-  color: #94a3b8;
+  color: #cbd5e1;
+  font-size: 1rem;
 }
 
 .message-history {
@@ -347,8 +354,9 @@
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #94a3b8;
+  color: #f1f5f9;
   font-size: 1.125rem;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
