@@ -6,6 +6,7 @@ import ConversationsTab from './components/ConversationsTab'
 import TestAITab from './components/TestAITab'
 import CustomersTab from './components/CustomersTab'
 import AttendantsTab from './components/AttendantsTab'
+import QueueTab from './components/QueueTab'
 import { createClient } from '@supabase/supabase-js'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
@@ -93,6 +94,7 @@ function App() {
   const tabs = [
     { id: 'connection', label: 'Conexão', icon: '🔌' },
     { id: 'customers', label: 'Clientes', icon: '👥' },
+    { id: 'queue', label: 'Fila de Cobranças', icon: '📊' },
     { id: 'attendants', label: 'Atendentes', icon: '👤' },
     { id: 'conversations', label: 'Conversas', icon: '💬' },
     { id: 'test', label: 'Testar IA', icon: '🤖' },
@@ -135,6 +137,7 @@ function App() {
       <main className="content">
         {activeTab === 'connection' && <ConnectionTab apiUrl={API_URL} />}
         {activeTab === 'customers' && <CustomersTab apiUrl={API_URL} />}
+        {activeTab === 'queue' && <QueueTab supabase={supabase} apiUrl={API_URL} />}
         {activeTab === 'attendants' && <AttendantsTab supabase={supabase} />}
         {activeTab === 'config' && <ConfigTab apiUrl={API_URL} />}
         {activeTab === 'conversations' && (
