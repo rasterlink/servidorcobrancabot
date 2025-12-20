@@ -32,7 +32,10 @@ export default function ConversationsTab({ apiUrl, supabase, selectedAttendant, 
   }, [conversations, selectedAttendant])
 
   const loadAttendants = async () => {
-    if (!supabase) return
+    if (!supabase) {
+      setAttendants([])
+      return
+    }
 
     try {
       const { data, error } = await supabase
@@ -43,9 +46,12 @@ export default function ConversationsTab({ apiUrl, supabase, selectedAttendant, 
 
       if (!error && data) {
         setAttendants(data)
+      } else {
+        setAttendants([])
       }
     } catch (error) {
       console.error('Erro ao carregar atendentes:', error)
+      setAttendants([])
     }
   }
 
@@ -136,15 +142,22 @@ export default function ConversationsTab({ apiUrl, supabase, selectedAttendant, 
   }
 
   const handleSelectConversation = async (conv) => {
-    setSelectedConversation(conv)
+    try {
+      setSelectedConversation(conv)
 
-    if (selectedAttendant && !conv.attendant_id) {
-      await assignAttendant(conv.id, selectedAttendant.id)
+      if (supabase && selectedAttendant && !conv.attendant_id) {
+        await assignAttendant(conv.id, selectedAttendant.id)
+      }
+    } catch (error) {
+      console.error('Erro ao selecionar conversa:', error)
     }
   }
 
   const assignAttendant = async (conversationId, attendantId) => {
-    if (!supabase) return
+    if (!supabase) {
+      console.warn('Supabase não configurado')
+      return
+    }
 
     try {
       const { error } = await supabase
@@ -153,7 +166,7 @@ export default function ConversationsTab({ apiUrl, supabase, selectedAttendant, 
         .eq('id', conversationId)
 
       if (!error) {
-        loadConversations()
+        await loadConversations()
       }
     } catch (error) {
       console.error('Erro ao atribuir atendente:', error)
