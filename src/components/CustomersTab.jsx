@@ -204,10 +204,12 @@ export default function CustomersTab({ apiUrl }) {
       const installationDateIndex = getIndex(['data instalação'])
       const validityDateIndex = getIndex(['data vigência'])
       const sellerIndex = getIndex(['vendedor'])
-      const installmentValueIndex = getIndex(['valor da parcela'])
-      const totalValueIndex = getIndex(['valor total'])
       const vehicleValueIndex = getIndex(['valor veiculo'])
       const proposalValueIndex = getIndex(['valor proposta'])
+
+      // Colunas AF e AH específicas
+      const installmentValueIndex = headers.findIndex(h => h.trim().toUpperCase() === 'VALOR DA PARCELA')
+      const totalValueIndex = headers.findIndex(h => h.trim().toUpperCase() === 'VALOR COM JUROS')
 
       const rawDataObject = {}
       headers.forEach((header, index) => {
