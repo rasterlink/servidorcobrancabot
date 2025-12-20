@@ -578,7 +578,7 @@ export default function CustomersTab({ apiUrl }) {
               )}
               {customer.total_value && (
                 <div className="detail-item">
-                  <strong>Valor Total:</strong> R$ {parseFloat(customer.total_value).toFixed(2)}
+                  <strong>Valor com Juros:</strong> R$ {parseFloat(customer.total_value).toFixed(2)}
                 </div>
               )}
             </div>
