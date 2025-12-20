@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react'
 import './CustomersTab.css'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
 
 export default function CustomersTab({ apiUrl }) {
   const [customers, setCustomers] = useState([])
@@ -23,9 +29,13 @@ export default function CustomersTab({ apiUrl }) {
 
   const loadCustomers = async () => {
     try {
-      const res = await fetch(`${apiUrl}/customers`)
-      const data = await res.json()
-      setCustomers(data)
+      const { data, error } = await supabase
+        .from('customers')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setCustomers(data || [])
     } catch (error) {
       console.error('Erro ao carregar clientes:', error)
     }
@@ -36,24 +46,38 @@ export default function CustomersTab({ apiUrl }) {
     setLoading(true)
 
     try {
-      const url = editingId
-        ? `${apiUrl}/customers/${editingId}`
-        : `${apiUrl}/customers`
-
-      const method = editingId ? 'PUT' : 'POST'
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-
-      if (res.ok) {
-        await loadCustomers()
-        resetForm()
+      const customerData = {
+        phone: formData.phone,
+        name: formData.name,
+        amount_due: parseFloat(formData.amount_due) || 0,
+        due_date: formData.due_date || null,
+        invoice_number: formData.invoice_number || '',
+        notes: formData.notes || '',
+        status: formData.status
       }
+
+      let error
+      if (editingId) {
+        const result = await supabase
+          .from('customers')
+          .update(customerData)
+          .eq('id', editingId)
+        error = result.error
+      } else {
+        const result = await supabase
+          .from('customers')
+          .insert([customerData])
+        error = result.error
+      }
+
+      if (error) throw error
+
+      await loadCustomers()
+      resetForm()
+      alert(editingId ? 'Cliente atualizado com sucesso!' : 'Cliente adicionado com sucesso!')
     } catch (error) {
       console.error('Erro ao salvar cliente:', error)
+      alert(`Erro ao salvar cliente: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -63,10 +87,18 @@ export default function CustomersTab({ apiUrl }) {
     if (!confirm('Tem certeza que deseja excluir este cliente?')) return
 
     try {
-      await fetch(`${apiUrl}/customers/${id}`, { method: 'DELETE' })
+      const { error } = await supabase
+        .from('customers')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
       await loadCustomers()
+      alert('Cliente excluído com sucesso!')
     } catch (error) {
       console.error('Erro ao excluir cliente:', error)
+      alert(`Erro ao excluir cliente: ${error.message}`)
     }
   }
 
@@ -311,37 +343,96 @@ export default function CustomersTab({ apiUrl }) {
         }
 
         setLoading(true)
-        console.log('🚀 Enviando para o servidor...')
-        console.log('URL:', `${apiUrl}/customers/bulk`)
-        console.log('Dados:', JSON.stringify({ customers }).substring(0, 200) + '...')
+        console.log('🚀 Processando importação...')
 
-        const res = await fetch(`${apiUrl}/customers/bulk`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customers })
-        })
+        // Buscar clientes existentes que não estão pagos
+        const { data: existingCustomers } = await supabase
+          .from('customers')
+          .select('id, phone, name, status, notes')
+          .neq('status', 'paid')
 
-        console.log('📡 Resposta do servidor - Status:', res.status)
+        console.log('📊 Clientes existentes:', existingCustomers?.length || 0)
 
-        if (res.ok) {
-          const result = await res.json()
-          console.log('✅ Resultado da importação:', result)
-          await loadCustomers()
+        // Telefones da nova lista
+        const newPhones = customers.map(c => c.phone)
 
-          let message = `✅ Importação concluída!\n\n`
-          message += `📥 ${result.imported} cliente(s) importado(s)\n`
+        // Clientes que não estão mais na nova lista = pagaram
+        const customersToMarkAsPaid = existingCustomers
+          ? existingCustomers.filter(c => !newPhones.includes(c.phone))
+          : []
 
-          if (result.markedAsPaid > 0) {
-            message += `💰 ${result.markedAsPaid} cliente(s) marcado(s) como PAGO (não estavam na nova lista):\n`
-            message += result.paidCustomers.join(', ')
+        console.log('💰 Clientes a marcar como pago:', customersToMarkAsPaid.length)
+
+        // Marcar como pago os que não estão mais na lista
+        if (customersToMarkAsPaid.length > 0) {
+          const today = new Date().toISOString().split('T')[0]
+
+          for (const customer of customersToMarkAsPaid) {
+            await supabase
+              .from('customers')
+              .update({
+                status: 'paid',
+                notes: customer.notes
+                  ? `${customer.notes}\n\n[${today}] Marcado como pago automaticamente - removido da lista de devedores`
+                  : `[${today}] Marcado como pago automaticamente - removido da lista de devedores`
+              })
+              .eq('id', customer.id)
           }
-
-          alert(message)
-        } else {
-          const error = await res.json()
-          console.error('❌ Erro do servidor:', error)
-          alert(`Erro ao importar: ${error.error || 'Erro desconhecido'}`)
         }
+
+        // Preparar dados para inserção
+        const validCustomers = customers.map(c => ({
+          phone: c.phone,
+          name: c.name,
+          amount_due: parseFloat(c.amount_due) || 0,
+          due_date: c.due_date || null,
+          invoice_number: c.invoice_number || '',
+          notes: c.notes || '',
+          status: c.status || 'pending',
+          vehicle_plate: c.vehicle_plate || null,
+          vehicle_chassis: c.vehicle_chassis || null,
+          vehicle_brand: c.vehicle_brand || null,
+          vehicle_model: c.vehicle_model || null,
+          document: c.document || null,
+          contract_status: c.contract_status || null,
+          overdue_installments: c.overdue_installments || 0,
+          tracker_id: c.tracker_id || null,
+          renewal_status: c.renewal_status || null,
+          contract_renewal: c.contract_renewal || null,
+          installation_date: c.installation_date || null,
+          validity_date: c.validity_date || null,
+          seller: c.seller || null,
+          installment_value: c.installment_value ? parseFloat(c.installment_value) : null,
+          total_value: c.total_value ? parseFloat(c.total_value) : null,
+          raw_data: c.raw_data || {}
+        }))
+
+        console.log('📥 Importando', validCustomers.length, 'clientes...')
+
+        // Inserir/atualizar clientes (upsert por telefone)
+        const { data: importedData, error: importError } = await supabase
+          .from('customers')
+          .upsert(validCustomers, { onConflict: 'phone' })
+          .select()
+
+        if (importError) {
+          console.error('❌ Erro ao importar:', importError)
+          throw importError
+        }
+
+        console.log('✅ Importação concluída!')
+
+        await loadCustomers()
+
+        let message = `✅ Importação concluída!\n\n`
+        message += `📥 ${importedData?.length || validCustomers.length} cliente(s) importado(s)\n`
+
+        if (customersToMarkAsPaid.length > 0) {
+          message += `💰 ${customersToMarkAsPaid.length} cliente(s) marcado(s) como PAGO (não estavam na nova lista):\n`
+          message += customersToMarkAsPaid.map(c => c.name).join(', ')
+        }
+
+        alert(message)
       } catch (error) {
         console.error('❌ Erro ao importar CSV:', error)
         alert(`Erro ao importar CSV: ${error.message}`)
