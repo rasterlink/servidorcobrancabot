@@ -189,7 +189,7 @@ export default function CustomersTab({ apiUrl }) {
 
       const nameIndex = getIndex(['nome', 'razao'])
       const phoneIndex = getIndex(['celular', 'telefone celular'])
-      const valueIndex = getIndex(['valor com juros'])
+      const valueIndex = headers.findIndex(h => h.trim().toUpperCase() === 'VALOR COM JUROS')
       const dueDateIndex = getIndex(['vencimento'])
       const invoiceIndex = getIndex(['proposta'])
       const overdueIndex = getIndex(['parcelas vencidas'])
@@ -207,9 +207,15 @@ export default function CustomersTab({ apiUrl }) {
       const vehicleValueIndex = getIndex(['valor veiculo'])
       const proposalValueIndex = getIndex(['valor proposta'])
 
-      // Colunas AF e AH específicas
-      const installmentValueIndex = headers.findIndex(h => h.trim().toUpperCase() === 'VALOR DA PARCELA')
-      const totalValueIndex = headers.findIndex(h => h.trim().toUpperCase() === 'VALOR COM JUROS')
+      // Colunas específicas para valor de parcela e valor total com juros
+      const installmentValueIndex = headers.findIndex(h => {
+        const clean = h.trim().toUpperCase().replace(/\s+/g, ' ')
+        return clean === 'VALOR DA PARCELA' || clean.includes('PARCELA')
+      })
+      const totalValueIndex = headers.findIndex(h => {
+        const clean = h.trim().toUpperCase()
+        return clean === 'VALOR COM JUROS'
+      })
 
       const rawDataObject = {}
       headers.forEach((header, index) => {
@@ -218,10 +224,10 @@ export default function CustomersTab({ apiUrl }) {
         }
       })
 
-      console.log('🔍 Debug - installmentValueIndex:', installmentValueIndex, 'valor:', rawData[installmentValueIndex])
-      console.log('🔍 Debug - totalValueIndex:', totalValueIndex, 'valor:', rawData[totalValueIndex])
-      console.log('🔍 Debug - vehicleValueIndex:', vehicleValueIndex, 'valor:', rawData[vehicleValueIndex])
-      console.log('🔍 Debug - proposalValueIndex:', proposalValueIndex, 'valor:', rawData[proposalValueIndex])
+      console.log('🔍 Debug CSV Headers:', headers)
+      console.log('🔍 Debug - valueIndex (amount_due):', valueIndex, 'header:', headers[valueIndex], 'valor:', rawData[valueIndex])
+      console.log('🔍 Debug - installmentValueIndex:', installmentValueIndex, 'header:', headers[installmentValueIndex], 'valor:', rawData[installmentValueIndex])
+      console.log('🔍 Debug - totalValueIndex:', totalValueIndex, 'header:', headers[totalValueIndex], 'valor:', rawData[totalValueIndex])
 
       return {
         name: rawData[nameIndex] || '',
