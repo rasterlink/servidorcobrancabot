@@ -189,7 +189,7 @@ export default function CustomersTab({ apiUrl }) {
 
       const nameIndex = getIndex(['nome', 'razao'])
       const phoneIndex = getIndex(['celular', 'telefone celular'])
-      const valueIndex = getIndex(['valor com juros', 'valor total'])
+      const valueIndex = getIndex(['valor com juros'])
       const dueDateIndex = getIndex(['vencimento'])
       const invoiceIndex = getIndex(['proposta'])
       const overdueIndex = getIndex(['parcelas vencidas'])
@@ -206,6 +206,8 @@ export default function CustomersTab({ apiUrl }) {
       const sellerIndex = getIndex(['vendedor'])
       const installmentValueIndex = getIndex(['valor da parcela'])
       const totalValueIndex = getIndex(['valor total'])
+      const vehicleValueIndex = getIndex(['valor veiculo'])
+      const proposalValueIndex = getIndex(['valor proposta'])
 
       const rawDataObject = {}
       headers.forEach((header, index) => {
@@ -213,6 +215,11 @@ export default function CustomersTab({ apiUrl }) {
           rawDataObject[header] = rawData[index]
         }
       })
+
+      console.log('🔍 Debug - installmentValueIndex:', installmentValueIndex, 'valor:', rawData[installmentValueIndex])
+      console.log('🔍 Debug - totalValueIndex:', totalValueIndex, 'valor:', rawData[totalValueIndex])
+      console.log('🔍 Debug - vehicleValueIndex:', vehicleValueIndex, 'valor:', rawData[vehicleValueIndex])
+      console.log('🔍 Debug - proposalValueIndex:', proposalValueIndex, 'valor:', rawData[proposalValueIndex])
 
       return {
         name: rawData[nameIndex] || '',
@@ -335,7 +342,7 @@ export default function CustomersTab({ apiUrl }) {
         const lines = text.split('\n').filter(line => line.trim())
         console.log('📊 Linhas encontradas:', lines.length)
 
-        const headers = parseCSVLine(lines[0])
+        const headers = parseCSVLine(lines[0]).map(h => h.trim())
         console.log('📋 Headers:', headers)
 
         const customers = lines.slice(1)
