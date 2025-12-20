@@ -97,6 +97,151 @@ export default function CustomersTab({ apiUrl }) {
     setShowForm(false)
   }
 
+  const parseCSVLine = (line) => {
+    const values = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ';' && !inQuotes) {
+        values.push(current.trim())
+        current = ''
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    values.push(current.trim())
+    return values
+  }
+
+  const normalizePhone = (phone) => {
+    if (!phone) return ''
+
+    let cleaned = phone.replace(/\D/g, '')
+
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1)
+    }
+
+    if (!cleaned.startsWith('55')) {
+      cleaned = '55' + cleaned
+    }
+
+    if (cleaned.length === 12) {
+      cleaned = cleaned.slice(0, 4) + '9' + cleaned.slice(4)
+    }
+
+    return cleaned + '@s.whatsapp.net'
+  }
+
+  const convertToStandardFormat = (rawData, headers) => {
+    const hasNameColumn = headers.some(h =>
+      h.toLowerCase().includes('nome') || h.toLowerCase().includes('razao')
+    )
+
+    if (hasNameColumn) {
+      const nameIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('nome') || h.toLowerCase().includes('razao')
+      )
+      const phoneIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('celular') || h.toLowerCase().includes('telefone celular')
+      )
+      const valueIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('valor com juros') || h.toLowerCase().includes('valor total')
+      )
+      const dueDateIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('vencimento')
+      )
+      const invoiceIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('proposta')
+      )
+      const overdueIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('parcelas vencidas')
+      )
+      const plateIndex = headers.findIndex(h =>
+        h.toLowerCase().includes('placa')
+      )
+
+      return {
+        name: rawData[nameIndex] || '',
+        phone: normalizePhone(rawData[phoneIndex] || ''),
+        amount_due: extractValue(rawData[valueIndex]) || '0',
+        due_date: formatDate(rawData[dueDateIndex]) || '',
+        invoice_number: rawData[invoiceIndex] || '',
+        notes: buildNotes(rawData, overdueIndex, plateIndex),
+        status: determineStatus(rawData[overdueIndex], rawData[dueDateIndex])
+      }
+    }
+
+    return {
+      phone: rawData[headers.indexOf('phone')] || '',
+      name: rawData[headers.indexOf('name')] || '',
+      amount_due: rawData[headers.indexOf('amount_due')] || '',
+      due_date: rawData[headers.indexOf('due_date')] || '',
+      invoice_number: rawData[headers.indexOf('invoice_number')] || '',
+      notes: rawData[headers.indexOf('notes')] || '',
+      status: rawData[headers.indexOf('status')] || 'pending'
+    }
+  }
+
+  const extractValue = (valueStr) => {
+    if (!valueStr) return '0'
+    const cleaned = valueStr.replace(/[^\d,.-]/g, '').replace(',', '.')
+    return cleaned || '0'
+  }
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+
+    const parts = dateStr.split('/')
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+    }
+    return dateStr
+  }
+
+  const buildNotes = (rawData, overdueIndex, plateIndex) => {
+    const notes = []
+
+    if (overdueIndex >= 0 && rawData[overdueIndex]) {
+      const overdue = rawData[overdueIndex]
+      if (overdue && overdue !== '0') {
+        notes.push(`${overdue} parcela(s) vencida(s)`)
+      }
+    }
+
+    if (plateIndex >= 0 && rawData[plateIndex]) {
+      notes.push(`Placa: ${rawData[plateIndex]}`)
+    }
+
+    return notes.join(' | ')
+  }
+
+  const determineStatus = (overdueStr, dueDateStr) => {
+    if (overdueStr && parseInt(overdueStr) > 0) {
+      return 'overdue'
+    }
+
+    if (dueDateStr) {
+      const dueDate = new Date(formatDate(dueDateStr))
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      if (dueDate < today) {
+        return 'overdue'
+      }
+    }
+
+    return 'pending'
+  }
+
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -106,16 +251,21 @@ export default function CustomersTab({ apiUrl }) {
       try {
         const text = event.target.result
         const lines = text.split('\n').filter(line => line.trim())
-        const headers = lines[0].split(',').map(h => h.trim())
 
-        const customers = lines.slice(1).map(line => {
-          const values = line.split(',').map(v => v.trim())
-          const customer = {}
-          headers.forEach((header, index) => {
-            customer[header] = values[index] || ''
+        const headers = parseCSVLine(lines[0])
+
+        const customers = lines.slice(1)
+          .map(line => {
+            const values = parseCSVLine(line)
+            return convertToStandardFormat(values, headers)
           })
-          return customer
-        })
+          .filter(c => c.phone && c.name)
+
+        if (customers.length === 0) {
+          alert('⚠️ Nenhum cliente válido encontrado no arquivo.\nVerifique se há telefone e nome nas colunas.')
+          e.target.value = ''
+          return
+        }
 
         setLoading(true)
         const res = await fetch(`${apiUrl}/customers/bulk`, {
@@ -146,7 +296,7 @@ export default function CustomersTab({ apiUrl }) {
         e.target.value = ''
       }
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'ISO-8859-1')
   }
 
   const getStatusBadge = (status) => {
@@ -333,11 +483,29 @@ export default function CustomersTab({ apiUrl }) {
       </div>
 
       <div className="csv-instructions">
-        <h3>Formato do CSV para Importação</h3>
-        <p>O arquivo CSV deve ter as seguintes colunas (na primeira linha):</p>
-        <code>phone,name,amount_due,due_date,invoice_number,notes,status</code>
-        <p>Exemplo:</p>
-        <code>5511999999999@s.whatsapp.net,João Silva,150.50,2024-12-25,INV-001,Cliente antigo,pending</code>
+        <h3>📋 Formatos de CSV Aceitos</h3>
+
+        <div className="format-section">
+          <h4>✅ Formato 1: Sistema de Rastreamento (Recomendado)</h4>
+          <p>Detecta automaticamente arquivos com colunas:</p>
+          <ul>
+            <li><strong>Nome/Razão Social</strong> - Nome do cliente</li>
+            <li><strong>Telefone Celular</strong> - Telefone (será convertido automaticamente)</li>
+            <li><strong>Valor com Juros</strong> ou <strong>Valor Total</strong> - Valor devido</li>
+            <li><strong>Vencimento</strong> - Data de vencimento</li>
+            <li><strong>Proposta</strong> - Número da fatura</li>
+            <li><strong>Parcelas vencidas</strong> - Define status automaticamente</li>
+            <li><strong>Placa</strong> - Adicionado nas observações</li>
+          </ul>
+          <p className="format-note">💡 Pode usar <strong>vírgula</strong> ou <strong>ponto e vírgula</strong> como separador</p>
+        </div>
+
+        <div className="format-section">
+          <h4>✅ Formato 2: Formato Simples</h4>
+          <code>phone,name,amount_due,due_date,invoice_number,notes,status</code>
+          <p>Exemplo:</p>
+          <code>5511999999999@s.whatsapp.net,João Silva,150.50,2024-12-25,INV-001,Cliente antigo,pending</code>
+        </div>
       </div>
     </div>
   )
