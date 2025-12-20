@@ -207,7 +207,7 @@ export default function CustomersTab({ apiUrl }) {
       // Colunas específicas para valor de parcela e valor total com juros
       const installmentValueIndex = headers.findIndex(h => {
         const clean = h.trim().toUpperCase().replace(/\s+/g, ' ')
-        return clean === 'VALOR DA PARCELA' || clean.includes('PARCELA')
+        return clean === 'VALOR DA PARCELA'
       })
       const totalValueIndex = headers.findIndex(h => {
         const clean = h.trim().toUpperCase()
