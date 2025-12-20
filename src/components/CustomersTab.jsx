@@ -6,6 +6,7 @@ export default function CustomersTab({ apiUrl }) {
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
+  const [expandedRow, setExpandedRow] = useState(null)
   const [formData, setFormData] = useState({
     phone: '',
     name: '',
@@ -147,27 +148,39 @@ export default function CustomersTab({ apiUrl }) {
     )
 
     if (hasNameColumn) {
-      const nameIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('nome') || h.toLowerCase().includes('razao')
-      )
-      const phoneIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('celular') || h.toLowerCase().includes('telefone celular')
-      )
-      const valueIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('valor com juros') || h.toLowerCase().includes('valor total')
-      )
-      const dueDateIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('vencimento')
-      )
-      const invoiceIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('proposta')
-      )
-      const overdueIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('parcelas vencidas')
-      )
-      const plateIndex = headers.findIndex(h =>
-        h.toLowerCase().includes('placa')
-      )
+      const getIndex = (keywords) => {
+        return headers.findIndex(h => {
+          const lower = h.toLowerCase()
+          return keywords.some(keyword => lower.includes(keyword.toLowerCase()))
+        })
+      }
+
+      const nameIndex = getIndex(['nome', 'razao'])
+      const phoneIndex = getIndex(['celular', 'telefone celular'])
+      const valueIndex = getIndex(['valor com juros', 'valor total'])
+      const dueDateIndex = getIndex(['vencimento'])
+      const invoiceIndex = getIndex(['proposta'])
+      const overdueIndex = getIndex(['parcelas vencidas'])
+      const plateIndex = getIndex(['placa'])
+      const chassisIndex = getIndex(['chassi'])
+      const brandIndex = getIndex(['marca'])
+      const modelIndex = getIndex(['modelo'])
+      const documentIndex = getIndex(['cnpj', 'cpf'])
+      const contractStatusIndex = getIndex(['situação'])
+      const trackerIdIndex = getIndex(['rastreador id'])
+      const renewalIndex = getIndex(['renovação'])
+      const installationDateIndex = getIndex(['data instalação'])
+      const validityDateIndex = getIndex(['data vigência'])
+      const sellerIndex = getIndex(['vendedor'])
+      const installmentValueIndex = getIndex(['valor da parcela'])
+      const totalValueIndex = getIndex(['valor total'])
+
+      const rawDataObject = {}
+      headers.forEach((header, index) => {
+        if (rawData[index]) {
+          rawDataObject[header] = rawData[index]
+        }
+      })
 
       return {
         name: rawData[nameIndex] || '',
@@ -176,7 +189,23 @@ export default function CustomersTab({ apiUrl }) {
         due_date: formatDate(rawData[dueDateIndex]) || '',
         invoice_number: rawData[invoiceIndex] || '',
         notes: buildNotes(rawData, overdueIndex, plateIndex),
-        status: determineStatus(rawData[overdueIndex], rawData[dueDateIndex])
+        status: determineStatus(rawData[overdueIndex], rawData[dueDateIndex]),
+        vehicle_plate: rawData[plateIndex] || '',
+        vehicle_chassis: rawData[chassisIndex] || '',
+        vehicle_brand: rawData[brandIndex] || '',
+        vehicle_model: rawData[modelIndex] || '',
+        document: rawData[documentIndex] || '',
+        contract_status: rawData[contractStatusIndex] || '',
+        overdue_installments: parseInt(rawData[overdueIndex] || '0') || 0,
+        tracker_id: rawData[trackerIdIndex] || '',
+        renewal_status: rawData[renewalIndex] || '',
+        contract_renewal: rawData[renewalIndex] || '',
+        installation_date: formatDate(rawData[installationDateIndex]) || '',
+        validity_date: formatDate(rawData[validityDateIndex]) || '',
+        seller: rawData[sellerIndex] || '',
+        installment_value: extractValue(rawData[installmentValueIndex]) || '0',
+        total_value: extractValue(rawData[totalValueIndex]) || '0',
+        raw_data: rawDataObject
       }
     }
 
@@ -310,6 +339,94 @@ export default function CustomersTab({ apiUrl }) {
     return <span className={`status-badge ${badge.class}`}>{badge.label}</span>
   }
 
+  const hasExtraData = (customer) => {
+    return customer.vehicle_plate || customer.vehicle_chassis ||
+           customer.vehicle_brand || customer.vehicle_model ||
+           customer.document || customer.contract_status ||
+           customer.seller || customer.tracker_id ||
+           (customer.raw_data && Object.keys(customer.raw_data).length > 0)
+  }
+
+  const renderExpandedDetails = (customer) => {
+    if (expandedRow !== customer.id) return null
+
+    return (
+      <tr className="expanded-row">
+        <td colSpan="7">
+          <div className="expanded-content">
+            <div className="details-grid">
+              {customer.document && (
+                <div className="detail-item">
+                  <strong>CPF/CNPJ:</strong> {customer.document}
+                </div>
+              )}
+              {customer.vehicle_plate && (
+                <div className="detail-item">
+                  <strong>Placa:</strong> {customer.vehicle_plate}
+                </div>
+              )}
+              {customer.vehicle_chassis && (
+                <div className="detail-item">
+                  <strong>Chassi:</strong> {customer.vehicle_chassis}
+                </div>
+              )}
+              {customer.vehicle_brand && (
+                <div className="detail-item">
+                  <strong>Marca:</strong> {customer.vehicle_brand}
+                </div>
+              )}
+              {customer.vehicle_model && (
+                <div className="detail-item">
+                  <strong>Modelo:</strong> {customer.vehicle_model}
+                </div>
+              )}
+              {customer.contract_status && (
+                <div className="detail-item">
+                  <strong>Status Contrato:</strong> {customer.contract_status}
+                </div>
+              )}
+              {customer.overdue_installments > 0 && (
+                <div className="detail-item">
+                  <strong>Parcelas Vencidas:</strong> {customer.overdue_installments}
+                </div>
+              )}
+              {customer.tracker_id && (
+                <div className="detail-item">
+                  <strong>Rastreador ID:</strong> {customer.tracker_id}
+                </div>
+              )}
+              {customer.seller && (
+                <div className="detail-item">
+                  <strong>Vendedor:</strong> {customer.seller}
+                </div>
+              )}
+              {customer.installation_date && (
+                <div className="detail-item">
+                  <strong>Data Instalação:</strong> {new Date(customer.installation_date).toLocaleDateString('pt-BR')}
+                </div>
+              )}
+              {customer.validity_date && (
+                <div className="detail-item">
+                  <strong>Data Vigência:</strong> {new Date(customer.validity_date).toLocaleDateString('pt-BR')}
+                </div>
+              )}
+              {customer.installment_value && (
+                <div className="detail-item">
+                  <strong>Valor Parcela:</strong> R$ {parseFloat(customer.installment_value).toFixed(2)}
+                </div>
+              )}
+              {customer.total_value && (
+                <div className="detail-item">
+                  <strong>Valor Total:</strong> R$ {parseFloat(customer.total_value).toFixed(2)}
+                </div>
+              )}
+            </div>
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div className="customers-tab">
       <div className="customers-header">
@@ -440,41 +557,59 @@ export default function CustomersTab({ apiUrl }) {
             <table>
               <thead>
                 <tr>
+                  <th style={{width: '40px'}}></th>
                   <th>Nome</th>
                   <th>Telefone</th>
                   <th>Valor Devido</th>
                   <th>Vencimento</th>
-                  <th>Fatura</th>
                   <th>Status</th>
-                  <th>Ações</th>
+                  <th style={{width: '100px'}}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {customers.map(customer => (
-                  <tr key={customer.id}>
-                    <td>{customer.name}</td>
-                    <td className="phone-cell">{customer.phone}</td>
-                    <td className="amount-cell">R$ {parseFloat(customer.amount_due).toFixed(2)}</td>
-                    <td>{customer.due_date ? new Date(customer.due_date).toLocaleDateString('pt-BR') : '-'}</td>
-                    <td>{customer.invoice_number || '-'}</td>
-                    <td>{getStatusBadge(customer.status)}</td>
-                    <td className="actions-cell">
-                      <button
-                        className="btn-icon"
-                        onClick={() => handleEdit(customer)}
-                        title="Editar"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="btn-icon"
-                        onClick={() => handleDelete(customer.id)}
-                        title="Excluir"
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
+                  <>
+                    <tr key={customer.id} className={expandedRow === customer.id ? 'expanded' : ''}>
+                      <td>
+                        {hasExtraData(customer) && (
+                          <button
+                            className="btn-icon expand-btn"
+                            onClick={() => setExpandedRow(expandedRow === customer.id ? null : customer.id)}
+                            title={expandedRow === customer.id ? 'Recolher' : 'Ver mais detalhes'}
+                          >
+                            {expandedRow === customer.id ? '▼' : '▶'}
+                          </button>
+                        )}
+                      </td>
+                      <td>
+                        {customer.name}
+                        {customer.vehicle_plate && (
+                          <div className="table-subtitle">{customer.vehicle_plate}</div>
+                        )}
+                      </td>
+                      <td className="phone-cell">{customer.phone}</td>
+                      <td className="amount-cell">R$ {parseFloat(customer.amount_due).toFixed(2)}</td>
+                      <td>{customer.due_date ? new Date(customer.due_date).toLocaleDateString('pt-BR') : '-'}</td>
+                      <td>{getStatusBadge(customer.status)}</td>
+                      <td className="actions-cell">
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleEdit(customer)}
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="btn-icon"
+                          onClick={() => handleDelete(customer.id)}
+                          title="Excluir"
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                    {renderExpandedDetails(customer)}
+                  </>
                 ))}
               </tbody>
             </table>

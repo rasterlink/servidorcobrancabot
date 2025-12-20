@@ -137,10 +137,21 @@ async function connectToWhatsApp() {
               systemPrompt += `\n\n=== INFORMAÇÕES DO CLIENTE ===
 Nome: ${customer.name}
 Telefone: ${customer.phone}
+${customer.document ? `CPF/CNPJ: ${customer.document}` : ''}
 Valor Devido: R$ ${parseFloat(customer.amount_due).toFixed(2)}
 Data de Vencimento: ${customer.due_date || 'Não informada'}
-Número da Fatura: ${customer.invoice_number || 'Não informado'}
+Número da Fatura/Proposta: ${customer.invoice_number || 'Não informado'}
 Status: ${customer.status}
+${customer.overdue_installments > 0 ? `Parcelas Vencidas: ${customer.overdue_installments}` : ''}
+
+${customer.vehicle_plate || customer.vehicle_brand || customer.vehicle_model ? '=== INFORMAÇÕES DO VEÍCULO ===' : ''}
+${customer.vehicle_plate ? `Placa: ${customer.vehicle_plate}` : ''}
+${customer.vehicle_brand ? `Marca: ${customer.vehicle_brand}` : ''}
+${customer.vehicle_model ? `Modelo: ${customer.vehicle_model}` : ''}
+${customer.vehicle_chassis ? `Chassi: ${customer.vehicle_chassis}` : ''}
+
+${customer.contract_status ? `Status do Contrato: ${customer.contract_status}` : ''}
+${customer.seller ? `Vendedor: ${customer.seller}` : ''}
 Observações: ${customer.notes || 'Nenhuma'}
 
 IMPORTANTE: Você está falando com ${customer.name}. Use essas informações para negociar o pagamento de R$ ${parseFloat(customer.amount_due).toFixed(2)}.`;
@@ -355,23 +366,47 @@ app.get('/customers', async (req, res) => {
 });
 
 app.post('/customers', async (req, res) => {
-  const { phone, name, amount_due, due_date, invoice_number, notes, status } = req.body;
+  const {
+    phone, name, amount_due, due_date, invoice_number, notes, status,
+    vehicle_plate, vehicle_chassis, vehicle_brand, vehicle_model,
+    document, contract_status, overdue_installments, tracker_id,
+    renewal_status, contract_renewal, installation_date, validity_date,
+    seller, installment_value, total_value, raw_data
+  } = req.body;
 
   if (!phone || !name || !amount_due) {
     return res.status(400).json({ error: 'Campos obrigatórios: phone, name, amount_due' });
   }
 
+  const customerData = {
+    phone,
+    name,
+    amount_due: parseFloat(amount_due),
+    due_date: due_date || null,
+    invoice_number: invoice_number || '',
+    notes: notes || '',
+    status: status || 'pending',
+    vehicle_plate: vehicle_plate || null,
+    vehicle_chassis: vehicle_chassis || null,
+    vehicle_brand: vehicle_brand || null,
+    vehicle_model: vehicle_model || null,
+    document: document || null,
+    contract_status: contract_status || null,
+    overdue_installments: overdue_installments || 0,
+    tracker_id: tracker_id || null,
+    renewal_status: renewal_status || null,
+    contract_renewal: contract_renewal || null,
+    installation_date: installation_date || null,
+    validity_date: validity_date || null,
+    seller: seller || null,
+    installment_value: installment_value ? parseFloat(installment_value) : null,
+    total_value: total_value ? parseFloat(total_value) : null,
+    raw_data: raw_data || {}
+  };
+
   const { data, error } = await supabase
     .from('customers')
-    .insert({
-      phone,
-      name,
-      amount_due: parseFloat(amount_due),
-      due_date: due_date || null,
-      invoice_number: invoice_number || '',
-      notes: notes || '',
-      status: status || 'pending'
-    })
+    .insert(customerData)
     .select()
     .single();
 
@@ -429,7 +464,23 @@ app.post('/customers/bulk', async (req, res) => {
       due_date: c.due_date || null,
       invoice_number: c.invoice_number || '',
       notes: c.notes || '',
-      status: c.status || 'pending'
+      status: c.status || 'pending',
+      vehicle_plate: c.vehicle_plate || null,
+      vehicle_chassis: c.vehicle_chassis || null,
+      vehicle_brand: c.vehicle_brand || null,
+      vehicle_model: c.vehicle_model || null,
+      document: c.document || null,
+      contract_status: c.contract_status || null,
+      overdue_installments: c.overdue_installments || 0,
+      tracker_id: c.tracker_id || null,
+      renewal_status: c.renewal_status || null,
+      contract_renewal: c.contract_renewal || null,
+      installation_date: c.installation_date || null,
+      validity_date: c.validity_date || null,
+      seller: c.seller || null,
+      installment_value: c.installment_value ? parseFloat(c.installment_value) : null,
+      total_value: c.total_value ? parseFloat(c.total_value) : null,
+      raw_data: c.raw_data || {}
     }));
 
     const { data, error } = await supabase
