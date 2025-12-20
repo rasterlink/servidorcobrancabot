@@ -90,9 +90,13 @@ export default function ConnectionTab({ apiUrl }) {
     try {
       const res = await fetch(`${apiUrl}/status`)
       const data = await res.json()
+      console.log('Status atual:', data)
       setStatus(data.status)
       if (data.qr) {
+        console.log('QR Code recebido!')
         setQrCode(data.qr)
+      } else if (status !== data.status) {
+        console.log('Status mudou para:', data.status)
       }
     } catch (error) {
       console.error('Erro ao verificar status:', error)
@@ -101,15 +105,38 @@ export default function ConnectionTab({ apiUrl }) {
 
   const handleConnect = async () => {
     setLoading(true)
+    console.log('Iniciando conexão com WhatsApp...')
+
     try {
-      const res = await fetch(`${apiUrl}/connect`, { method: 'POST' })
+      console.log('Fazendo requisição para:', `${apiUrl}/connect`)
+      const res = await fetch(`${apiUrl}/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      console.log('Status da resposta:', res.status)
       const data = await res.json()
+      console.log('Resposta do servidor:', data)
+
       if (data.success) {
-        setTimeout(checkStatus, 2000)
+        console.log('Conexão iniciada! Aguardando QR Code...')
+        setTimeout(() => {
+          checkStatus()
+          console.log('Verificando status após 2s...')
+        }, 2000)
+
+        setTimeout(() => {
+          checkStatus()
+          console.log('Verificando status após 5s...')
+        }, 5000)
+      } else {
+        alert(data.message || 'Erro ao iniciar conexão')
       }
     } catch (error) {
       console.error('Erro ao conectar:', error)
-      alert('Erro ao conectar ao WhatsApp')
+      alert(`Erro ao conectar ao WhatsApp: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -151,13 +178,20 @@ export default function ConnectionTab({ apiUrl }) {
 
       <div className="connection-actions">
         {status === 'disconnected' ? (
-          <button
-            className="btn btn-primary"
-            onClick={handleConnect}
-            disabled={loading}
-          >
-            {loading ? 'Conectando...' : '🔌 Conectar WhatsApp'}
-          </button>
+          <>
+            <button
+              className="btn btn-primary"
+              onClick={handleConnect}
+              disabled={loading}
+            >
+              {loading ? '⏳ Conectando...' : '🔌 Conectar WhatsApp'}
+            </button>
+            {loading && (
+              <p className="loading-message">
+                Aguarde... O QR Code aparecerá em alguns segundos
+              </p>
+            )}
+          </>
         ) : (
           <button
             className="btn btn-danger"
