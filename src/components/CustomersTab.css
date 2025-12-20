@@ -1,0 +1,247 @@
+.customers-tab {
+  padding: 20px;
+}
+
+.customers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.customers-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #1a1a1a;
+}
+
+.customers-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.customer-form {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.customer-form h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: #1a1a1a;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.form-group small {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.customers-list {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.empty-state p:first-child {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.customers-table {
+  overflow-x: auto;
+}
+
+.customers-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.customers-table th {
+  text-align: left;
+  padding: 12px;
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+}
+
+.customers-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  color: #333;
+}
+
+.customers-table tr:hover {
+  background: #f9f9f9;
+}
+
+.phone-cell {
+  font-family: monospace;
+  font-size: 13px;
+  color: #666;
+}
+
+.amount-cell {
+  font-weight: 600;
+  color: #2196F3;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.badge-pending {
+  background: #FFF3CD;
+  color: #856404;
+}
+
+.badge-negotiating {
+  background: #D1ECF1;
+  color: #0C5460;
+}
+
+.badge-paid {
+  background: #D4EDDA;
+  color: #155724;
+}
+
+.badge-overdue {
+  background: #F8D7DA;
+  color: #721C24;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-icon:hover {
+  background: #f0f0f0;
+}
+
+.csv-instructions {
+  background: #f9f9f9;
+  border-left: 4px solid #4CAF50;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 4px;
+}
+
+.csv-instructions h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.csv-instructions p {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.csv-instructions code {
+  display: block;
+  background: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+  margin: 5px 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .customers-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .customers-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .customers-table {
+    font-size: 12px;
+  }
+
+  .customers-table th,
+  .customers-table td {
+    padding: 8px;
+  }
+}

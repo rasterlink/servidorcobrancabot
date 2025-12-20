@@ -1,0 +1,20 @@
+{
+  "name": "cobranca-automatica-server",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8",
+    "@supabase/supabase-js": "^2.39.3",
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "ws": "^8.18.0",
+    "openai": "^4.38.5",
+    "pino": "^9.0.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

@@ -1,0 +1,115 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: var(--bg-card);
+  padding: 1.5rem 2rem;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(51, 65, 85, 0.5);
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.status-badge.online .status-dot,
+.status-badge.connected .status-dot {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: #94a3b8;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: #e2e8f0;
+}
+
+.tab.active {
+  background: var(--primary);
+  color: white;
+}
+
+.tab-icon {
+  font-size: 1.25rem;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .status-indicators {
+    width: 100%;
+  }
+
+  .tabs {
+    padding: 1rem;
+  }
+
+  .content {
+    padding: 1rem;
+  }
+}
