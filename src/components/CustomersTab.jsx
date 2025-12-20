@@ -143,9 +143,6 @@ export default function CustomersTab({ apiUrl }) {
       } else if (char === ';' && !inQuotes) {
         values.push(current.trim())
         current = ''
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim())
-        current = ''
       } else {
         current += char
       }
