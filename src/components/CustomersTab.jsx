@@ -218,7 +218,7 @@ export default function CustomersTab({ apiUrl }) {
         name: rawData[nameIndex] || '',
         phone: normalizePhone(rawData[phoneIndex] || ''),
         amount_due: extractValue(rawData[valueIndex]) || '0',
-        due_date: formatDate(rawData[dueDateIndex]) || '',
+        due_date: formatDate(rawData[dueDateIndex]),
         invoice_number: rawData[invoiceIndex] || '',
         notes: buildNotes(rawData, overdueIndex, plateIndex),
         status: determineStatus(rawData[overdueIndex], rawData[dueDateIndex]),
@@ -232,8 +232,8 @@ export default function CustomersTab({ apiUrl }) {
         tracker_id: rawData[trackerIdIndex] || '',
         renewal_status: rawData[renewalIndex] || '',
         contract_renewal: rawData[renewalIndex] || '',
-        installation_date: formatDate(rawData[installationDateIndex]) || '',
-        validity_date: formatDate(rawData[validityDateIndex]) || '',
+        installation_date: formatDate(rawData[installationDateIndex]),
+        validity_date: formatDate(rawData[validityDateIndex]),
         seller: rawData[sellerIndex] || '',
         installment_value: extractValue(rawData[installmentValueIndex]) || '0',
         total_value: extractValue(rawData[totalValueIndex]) || '0',
@@ -259,13 +259,26 @@ export default function CustomersTab({ apiUrl }) {
   }
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return ''
+    if (!dateStr || dateStr.trim() === '') return null
 
-    const parts = dateStr.split('/')
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+    const cleaned = dateStr.trim().replace(/[()]/g, '')
+
+    if (cleaned.includes('(') || cleaned.length > 15) {
+      return null
     }
-    return dateStr
+
+    const parts = cleaned.split('/')
+    if (parts.length === 3 && parts[0].length <= 2 && parts[1].length <= 2) {
+      const day = parts[0].padStart(2, '0')
+      const month = parts[1].padStart(2, '0')
+      const year = parts[2]
+
+      if (parseInt(day) > 0 && parseInt(day) <= 31 && parseInt(month) > 0 && parseInt(month) <= 12) {
+        return `${year}-${month}-${day}`
+      }
+    }
+
+    return null
   }
 
   const buildNotes = (rawData, overdueIndex, plateIndex) => {
@@ -381,31 +394,41 @@ export default function CustomersTab({ apiUrl }) {
         }
 
         // Preparar dados para inserção
-        const validCustomers = customers.map(c => ({
-          phone: c.phone,
-          name: c.name,
-          amount_due: parseFloat(c.amount_due) || 0,
-          due_date: c.due_date || null,
-          invoice_number: c.invoice_number || '',
-          notes: c.notes || '',
-          status: c.status || 'pending',
-          vehicle_plate: c.vehicle_plate || null,
-          vehicle_chassis: c.vehicle_chassis || null,
-          vehicle_brand: c.vehicle_brand || null,
-          vehicle_model: c.vehicle_model || null,
-          document: c.document || null,
-          contract_status: c.contract_status || null,
-          overdue_installments: c.overdue_installments || 0,
-          tracker_id: c.tracker_id || null,
-          renewal_status: c.renewal_status || null,
-          contract_renewal: c.contract_renewal || null,
-          installation_date: c.installation_date || null,
-          validity_date: c.validity_date || null,
-          seller: c.seller || null,
-          installment_value: c.installment_value ? parseFloat(c.installment_value) : null,
-          total_value: c.total_value ? parseFloat(c.total_value) : null,
-          raw_data: c.raw_data || {}
-        }))
+        const validCustomers = customers.map(c => {
+          const cleanDate = (dateStr) => {
+            if (!dateStr || typeof dateStr !== 'string') return null
+            if (dateStr.includes('(') || dateStr.includes(')')) return null
+            if (dateStr.length > 15) return null
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
+            return dateStr
+          }
+
+          return {
+            phone: c.phone,
+            name: c.name,
+            amount_due: parseFloat(c.amount_due) || 0,
+            due_date: cleanDate(c.due_date),
+            invoice_number: c.invoice_number || '',
+            notes: c.notes || '',
+            status: c.status || 'pending',
+            vehicle_plate: c.vehicle_plate || null,
+            vehicle_chassis: c.vehicle_chassis || null,
+            vehicle_brand: c.vehicle_brand || null,
+            vehicle_model: c.vehicle_model || null,
+            document: c.document || null,
+            contract_status: c.contract_status || null,
+            overdue_installments: c.overdue_installments || 0,
+            tracker_id: c.tracker_id || null,
+            renewal_status: c.renewal_status || null,
+            contract_renewal: c.contract_renewal || null,
+            installation_date: cleanDate(c.installation_date),
+            validity_date: cleanDate(c.validity_date),
+            seller: c.seller || null,
+            installment_value: c.installment_value ? parseFloat(c.installment_value) : null,
+            total_value: c.total_value ? parseFloat(c.total_value) : null,
+            raw_data: c.raw_data || {}
+          }
+        })
 
         console.log('📥 Importando', validCustomers.length, 'clientes...')
 
