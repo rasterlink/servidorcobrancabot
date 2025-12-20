@@ -557,6 +557,57 @@ app.get('/customers/:id/history', async (req, res) => {
   res.json(data || []);
 });
 
+app.post('/send-message', async (req, res) => {
+  const { to, message } = req.body;
+
+  if (!to || !message) {
+    return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
+  }
+
+  if (!sock || connectionStatus !== 'connected') {
+    return res.status(503).json({ error: 'WhatsApp não está conectado' });
+  }
+
+  try {
+    let phoneNumber = to;
+
+    if (!phoneNumber.includes('@')) {
+      phoneNumber = phoneNumber.replace(/\D/g, '');
+      phoneNumber = phoneNumber + '@s.whatsapp.net';
+    }
+
+    await sock.sendMessage(phoneNumber, { text: message });
+
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('phone', to)
+      .maybeSingle();
+
+    await supabase.from('conversations').insert({
+      phone: phoneNumber,
+      customer_phone: to,
+      message: message,
+      type: 'sent',
+      timestamp: new Date().toISOString()
+    });
+
+    await supabase.from('conversation_history').insert({
+      customer_id: customer?.id || null,
+      phone: to,
+      message: message,
+      role: 'assistant',
+      timestamp: new Date().toISOString()
+    });
+
+    console.log(`Mensagem enviada para ${to}: ${message}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao enviar mensagem:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/conversations/:id/send-message', async (req, res) => {
   const { id } = req.params;
   const { message } = req.body;
