@@ -273,22 +273,36 @@ export default function CustomersTab({ apiUrl }) {
 
   const handleCSVUpload = async (e) => {
     const file = e.target.files[0]
-    if (!file) return
+    if (!file) {
+      console.log('Nenhum arquivo selecionado')
+      return
+    }
+
+    console.log('📁 Arquivo selecionado:', file.name, 'Tamanho:', file.size, 'bytes')
 
     const reader = new FileReader()
     reader.onload = async (event) => {
       try {
+        console.log('📄 Lendo arquivo...')
         const text = event.target.result
+        console.log('✅ Arquivo lido. Tamanho do texto:', text.length, 'caracteres')
+
         const lines = text.split('\n').filter(line => line.trim())
+        console.log('📊 Linhas encontradas:', lines.length)
 
         const headers = parseCSVLine(lines[0])
+        console.log('📋 Headers:', headers)
 
         const customers = lines.slice(1)
           .map(line => {
             const values = parseCSVLine(line)
-            return convertToStandardFormat(values, headers)
+            const customer = convertToStandardFormat(values, headers)
+            console.log('👤 Cliente processado:', customer.name, customer.phone)
+            return customer
           })
           .filter(c => c.phone && c.name)
+
+        console.log('✅ Clientes válidos:', customers.length)
 
         if (customers.length === 0) {
           alert('⚠️ Nenhum cliente válido encontrado no arquivo.\nVerifique se há telefone e nome nas colunas.')
@@ -297,14 +311,21 @@ export default function CustomersTab({ apiUrl }) {
         }
 
         setLoading(true)
+        console.log('🚀 Enviando para o servidor...')
+        console.log('URL:', `${apiUrl}/customers/bulk`)
+        console.log('Dados:', JSON.stringify({ customers }).substring(0, 200) + '...')
+
         const res = await fetch(`${apiUrl}/customers/bulk`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ customers })
         })
 
+        console.log('📡 Resposta do servidor - Status:', res.status)
+
         if (res.ok) {
           const result = await res.json()
+          console.log('✅ Resultado da importação:', result)
           await loadCustomers()
 
           let message = `✅ Importação concluída!\n\n`
@@ -316,15 +337,26 @@ export default function CustomersTab({ apiUrl }) {
           }
 
           alert(message)
+        } else {
+          const error = await res.json()
+          console.error('❌ Erro do servidor:', error)
+          alert(`Erro ao importar: ${error.error || 'Erro desconhecido'}`)
         }
       } catch (error) {
-        console.error('Erro ao importar CSV:', error)
-        alert('Erro ao importar CSV. Verifique o formato do arquivo.')
+        console.error('❌ Erro ao importar CSV:', error)
+        alert(`Erro ao importar CSV: ${error.message}`)
       } finally {
         setLoading(false)
         e.target.value = ''
       }
     }
+
+    reader.onerror = (error) => {
+      console.error('❌ Erro ao ler arquivo:', error)
+      alert('Erro ao ler o arquivo CSV')
+    }
+
+    console.log('🔄 Iniciando leitura do arquivo...')
     reader.readAsText(file, 'ISO-8859-1')
   }
 
@@ -432,18 +464,20 @@ export default function CustomersTab({ apiUrl }) {
       <div className="customers-header">
         <h2>Clientes</h2>
         <div className="customers-actions">
-          <label className="btn btn-secondary">
-            Importar CSV
+          <label className={`btn btn-secondary ${loading ? 'disabled' : ''}`}>
+            {loading ? '⏳ Importando...' : '📥 Importar CSV'}
             <input
               type="file"
               accept=".csv"
               onChange={handleCSVUpload}
+              disabled={loading}
               style={{ display: 'none' }}
             />
           </label>
           <button
             className="btn btn-primary"
             onClick={() => setShowForm(!showForm)}
+            disabled={loading}
           >
             {showForm ? 'Cancelar' : '+ Adicionar Cliente'}
           </button>
