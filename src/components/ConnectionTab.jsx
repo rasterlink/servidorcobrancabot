@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import './ConnectionTab.css'
+import { io } from 'socket.io-client'
 
 export default function ConnectionTab({ apiUrl }) {
   const [qrCode, setQrCode] = useState(null)
@@ -13,76 +14,36 @@ export default function ConnectionTab({ apiUrl }) {
   }, [])
 
   useEffect(() => {
-    let ws = null
-    let reconnectTimeout = null
-    let isMounted = true
+    const socket = io(apiUrl)
 
-    const connectWebSocket = () => {
-      if (!isMounted) return
+    socket.on('connect', () => {
+      console.log('Socket.IO conectado')
+    })
 
-      try {
-        const wsUrl = apiUrl.replace('http', 'ws')
-        ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
-          console.log('WebSocket conectado')
-        }
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            if (data.type === 'qr') {
-              setQrCode(data.data)
-            } else if (data.type === 'status') {
-              setStatus(data.status)
-              if (data.status === 'connected') {
-                setQrCode(null)
-              }
-            }
-          } catch (error) {
-            console.warn('Erro ao processar mensagem WebSocket')
-          }
-        }
-
-        ws.onerror = () => {
-          console.warn('WebSocket: tentando reconectar...')
-        }
-
-        ws.onclose = () => {
-          if (isMounted) {
-            reconnectTimeout = setTimeout(() => {
-              if (isMounted) {
-                connectWebSocket()
-              }
-            }, 5000)
-          }
-        }
-      } catch (error) {
-        console.warn('WebSocket: falha na conexão, tentando novamente...')
-        if (isMounted) {
-          reconnectTimeout = setTimeout(() => {
-            if (isMounted) {
-              connectWebSocket()
-            }
-          }, 5000)
-        }
+    socket.on('qr_code', (data) => {
+      console.log('QR Code recebido')
+      if (data.success && data.qrCode) {
+        setQrCode(data.qrCode)
       }
-    }
+    })
 
-    connectWebSocket()
+    socket.on('status_update', (data) => {
+      console.log('Status update:', data)
+      setStatus(data.status)
+      if (data.status === 'connected') {
+        setQrCode(null)
+      }
+      if (data.qrCode) {
+        setQrCode(data.qrCode)
+      }
+    })
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO desconectado')
+    })
 
     return () => {
-      isMounted = false
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout)
-      }
-      if (ws) {
-        try {
-          ws.close()
-        } catch (error) {
-          console.warn('Erro ao fechar WebSocket')
-        }
-      }
+      socket.disconnect()
     }
   }, [apiUrl])
 
@@ -210,7 +171,7 @@ export default function ConnectionTab({ apiUrl }) {
             <p>Abra o WhatsApp no celular e escaneie este código</p>
             <div className="qr-code">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrCode)}`}
+                src={qrCode}
                 alt="QR Code"
               />
             </div>

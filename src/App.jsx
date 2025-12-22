@@ -8,10 +8,10 @@ import CustomersTab from './components/CustomersTab'
 import AttendantsTab from './components/AttendantsTab'
 import QueueTab from './components/QueueTab'
 import { createClient } from '@supabase/supabase-js'
+import { io } from 'socket.io-client'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-// Inicializar Supabase com verificação de variáveis
 let supabase = null
 try {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -41,7 +41,27 @@ function App() {
   }, [])
 
   useEffect(() => {
-    connectWebSocket()
+    const socket = io(API_URL)
+
+    socket.on('connect', () => {
+      console.log('Socket.IO conectado')
+      setWsStatus('connected')
+    })
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO desconectado')
+      setWsStatus('disconnected')
+    })
+
+    socket.on('status_update', (data) => {
+      console.log('Status update:', data)
+      setWhatsappStatus(data.status)
+      setConnectedPhone(data.phoneNumber || null)
+    })
+
+    return () => {
+      socket.disconnect()
+    }
   }, [])
 
   const checkServerStatus = async () => {
@@ -56,42 +76,6 @@ function App() {
     } catch {
       setServerStatus('offline')
       setConnectedPhone(null)
-    }
-  }
-
-  const connectWebSocket = () => {
-    try {
-      const wsUrl = API_URL.replace('http', 'ws')
-      const ws = new WebSocket(wsUrl)
-
-      ws.onopen = () => {
-        setWsStatus('connected')
-      }
-
-      ws.onerror = () => {
-        setWsStatus('disconnected')
-      }
-
-      ws.onclose = () => {
-        setWsStatus('disconnected')
-        setTimeout(connectWebSocket, 3000)
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.type === 'status') {
-            setWhatsappStatus(data.status)
-            setConnectedPhone(data.phone || null)
-          }
-        } catch (error) {
-          console.error('Erro ao processar mensagem WebSocket:', error)
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao conectar WebSocket:', error)
-      setWsStatus('disconnected')
-      setTimeout(connectWebSocket, 5000)
     }
   }
 
