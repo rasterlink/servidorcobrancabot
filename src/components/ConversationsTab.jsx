@@ -174,6 +174,7 @@ export default function ConversationsTab({ apiUrl, supabase, selectedAttendant, 
   }
 
   const formatPhone = (phone) => {
+    if (!phone) return 'Sem telefone'
     return phone.replace('@s.whatsapp.net', '')
   }
 
