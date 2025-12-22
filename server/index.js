@@ -70,36 +70,65 @@ async function connectToWhatsApp() {
       } else if (connection === 'open') {
         connectionStatus = 'connected';
         qrCodeData = null;
+        console.log('WhatsApp conectado!');
 
         // Obter número do telefone conectado
-        try {
-          // Aguardar um pouco para garantir que o sock.user está disponível
-          setTimeout(() => {
-            if (sock && sock.user) {
-              const userId = sock.user.id || sock.authState?.creds?.me?.id;
-              if (userId) {
-                // Formato: 5511999999999:XX@s.whatsapp.net
-                connectedPhone = userId.split(':')[0].split('@')[0];
-                console.log(`WhatsApp conectado com o número: ${connectedPhone}`);
-                broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
-              } else {
-                console.log('Usuário conectado, mas número não disponível ainda');
-                broadcast({ type: 'status', status: 'connected', phone: null });
+        setTimeout(async () => {
+          try {
+            // Tentar diferentes formas de obter o número
+            let phoneNumber = null;
+
+            // Método 1: sock.user.id
+            if (sock?.user?.id) {
+              phoneNumber = sock.user.id.split(':')[0].split('@')[0];
+              console.log('Número obtido via sock.user.id:', phoneNumber);
+            }
+
+            // Método 2: authState.creds.me
+            if (!phoneNumber && sock?.authState?.creds?.me?.id) {
+              phoneNumber = sock.authState.creds.me.id.split(':')[0].split('@')[0];
+              console.log('Número obtido via authState.creds.me.id:', phoneNumber);
+            }
+
+            // Método 3: Tentar obter do estado interno
+            if (!phoneNumber) {
+              try {
+                const { state } = await useMultiFileAuthState('./auth_info');
+                if (state?.creds?.me?.id) {
+                  phoneNumber = state.creds.me.id.split(':')[0].split('@')[0];
+                  console.log('Número obtido via state.creds.me.id:', phoneNumber);
+                }
+              } catch (e) {
+                console.log('Não foi possível obter via state:', e.message);
               }
             }
-          }, 1000);
-        } catch (error) {
-          console.error('Erro ao obter número:', error);
-        }
 
-        broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
-        console.log('WhatsApp conectado!');
+            if (phoneNumber) {
+              connectedPhone = phoneNumber;
+              console.log(`Número do telefone conectado: ${connectedPhone}`);
+              broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
+            } else {
+              console.log('Não foi possível obter o número do telefone');
+              broadcast({ type: 'status', status: 'connected', phone: null });
+            }
+          } catch (error) {
+            console.error('Erro ao obter número:', error);
+            broadcast({ type: 'status', status: 'connected', phone: null });
+          }
+        }, 2000);
       }
     });
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
       for (const msg of messages) {
         if (!msg.message || msg.key.fromMe) continue;
+
+        // Tentar capturar o número se ainda não foi obtido
+        if (!connectedPhone && sock?.user?.id) {
+          connectedPhone = sock.user.id.split(':')[0].split('@')[0];
+          console.log(`Número capturado via mensagem: ${connectedPhone}`);
+          broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
+        }
 
         const from = msg.key.remoteJid;
         const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
