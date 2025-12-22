@@ -67,16 +67,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .sidebar-header h3 {
   font-size: 1.25rem;
   margin: 0;
+  color: #f1f5f9;
 }
 
 .conversations-count {
-  background: rgba(59, 130, 246, 0.2);
-  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.875rem;
@@ -86,6 +88,7 @@
 .conversations-list {
   overflow-y: auto;
   flex: 1;
+  background: rgba(15, 23, 42, 0.3);
 }
 
 .empty-conversations {
@@ -103,22 +106,24 @@
 .empty-conversations div {
   font-size: 3rem;
   margin-bottom: 0.5rem;
+  filter: grayscale(1) opacity(0.5);
 }
 
 .conversation-item {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.3);
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  background: transparent;
 }
 
 .conversation-item:hover {
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .conversation-item.active {
-  background: rgba(59, 130, 246, 0.1);
+  background: rgba(59, 130, 246, 0.25);
   border-left: 3px solid #3b82f6;
 }
 
@@ -131,8 +136,8 @@
 
 .conversation-phone {
   font-weight: 600;
-  color: #f1f5f9;
-  font-size: 0.875rem;
+  color: #ffffff;
+  font-size: 0.95rem;
 }
 
 .ai-paused-badge {
@@ -140,7 +145,7 @@
 }
 
 .conversation-item-preview {
-  color: #cbd5e1;
+  color: #e2e8f0;
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
   overflow: hidden;
@@ -170,16 +175,19 @@
   height: 100%;
   padding: 2rem;
   text-align: center;
+  background: rgba(15, 23, 42, 0.3);
 }
 
 .empty-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
+  filter: grayscale(1) opacity(0.5);
 }
 
 .empty-state h3 {
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
+  color: #f1f5f9;
 }
 
 .empty-state p {
@@ -192,17 +200,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(30, 41, 59, 0.5);
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .detail-header-info h3 {
   margin: 0 0 0.25rem 0;
   font-size: 1.25rem;
+  color: #f1f5f9;
 }
 
 .detail-header-info p {
   margin: 0;
-  color: #cbd5e1;
+  color: #e2e8f0;
   font-size: 0.875rem;
 }
 
@@ -234,7 +243,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(15, 23, 42, 0.8);
 }
 
 .loading-messages,
@@ -266,22 +275,24 @@
 }
 
 .message-bubble {
-  background: rgba(59, 130, 246, 0.2);
-  color: #e2e8f0;
+  background: rgba(59, 130, 246, 0.3);
+  color: #ffffff;
   padding: 0.75rem 1rem;
   border-radius: 1rem;
   max-width: 70%;
   word-wrap: break-word;
   white-space: pre-wrap;
+  border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
 .message-item.sent .message-bubble {
-  background: rgba(16, 185, 129, 0.2);
-  color: #e2e8f0;
+  background: rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  border: 1px solid rgba(16, 185, 129, 0.4);
 }
 
 .message-time {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 0.75rem;
 }
 
@@ -309,17 +320,22 @@
 
 .message-input {
   flex: 1;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(30, 41, 59, 0.8);
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  color: #e2e8f0;
+  color: #ffffff;
   font-size: 0.875rem;
+}
+
+.message-input::placeholder {
+  color: #94a3b8;
 }
 
 .message-input:focus {
   outline: none;
   border-color: #3b82f6;
+  background: rgba(30, 41, 59, 1);
 }
 
 .message-input:disabled {
