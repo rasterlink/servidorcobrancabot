@@ -73,6 +73,7 @@ function QueueTab({ supabase, apiUrl }) {
           const message = `Olá ${customer.name}! Identificamos que você possui ${group.installments} parcela(s) em atraso no valor total de R$ ${parseFloat(customer.amount_due).toFixed(2)}. Entre em contato conosco para regularizar sua situação.`
 
           console.log(`Enviando mensagem para ${customer.name} (${customer.phone})...`)
+          console.log(`API URL: ${apiUrl}/send-message`)
 
           const response = await fetch(`${apiUrl}/send-message`, {
             method: 'POST',
@@ -82,6 +83,20 @@ function QueueTab({ supabase, apiUrl }) {
               message: message
             })
           })
+
+          console.log(`Status da resposta: ${response.status}`)
+
+          // Verificar se a resposta é JSON
+          const contentType = response.headers.get('content-type')
+          console.log(`Content-Type: ${contentType}`)
+
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text()
+            console.error(`Resposta não é JSON:`, text.substring(0, 200))
+            errorCount++
+            errors.push(`${customer.name}: Servidor retornou HTML ao invés de JSON (servidor pode estar offline)`)
+            continue
+          }
 
           const result = await response.json()
 
