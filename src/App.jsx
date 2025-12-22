@@ -31,6 +31,7 @@ function App() {
   const [serverStatus, setServerStatus] = useState('offline')
   const [wsStatus, setWsStatus] = useState('disconnected')
   const [whatsappStatus, setWhatsappStatus] = useState('disconnected')
+  const [connectedPhone, setConnectedPhone] = useState(null)
   const [selectedAttendant, setSelectedAttendant] = useState(null)
 
   useEffect(() => {
@@ -50,9 +51,11 @@ function App() {
         setServerStatus('online')
         const data = await res.json()
         setWhatsappStatus(data.connection || 'disconnected')
+        setConnectedPhone(data.phone || null)
       }
     } catch {
       setServerStatus('offline')
+      setConnectedPhone(null)
     }
   }
 
@@ -79,6 +82,7 @@ function App() {
           const data = JSON.parse(event.data)
           if (data.type === 'status') {
             setWhatsappStatus(data.status)
+            setConnectedPhone(data.phone || null)
           }
         } catch (error) {
           console.error('Erro ao processar mensagem WebSocket:', error)
@@ -116,7 +120,7 @@ function App() {
           </div>
           <div className={`status-badge ${whatsappStatus}`}>
             <span className="status-dot"></span>
-            Status: {whatsappStatus === 'connected' ? 'Conectado' : 'Desconectado'}
+            Status: {whatsappStatus === 'connected' ? (connectedPhone ? `Conectado (${connectedPhone})` : 'Conectado') : 'Desconectado'}
           </div>
         </div>
       </header>

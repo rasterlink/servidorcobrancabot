@@ -20,6 +20,7 @@ const supabase = createClient(
 let sock = null;
 let qrCodeData = null;
 let connectionStatus = 'disconnected';
+let connectedPhone = null;
 const clients = new Set();
 
 const logger = pino({ level: 'silent' });
@@ -59,7 +60,8 @@ async function connectToWhatsApp() {
       if (connection === 'close') {
         const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
         connectionStatus = 'disconnected';
-        broadcast({ type: 'status', status: 'disconnected' });
+        connectedPhone = null;
+        broadcast({ type: 'status', status: 'disconnected', phone: null });
 
         if (shouldReconnect) {
           console.log('Reconectando...');
@@ -68,7 +70,19 @@ async function connectToWhatsApp() {
       } else if (connection === 'open') {
         connectionStatus = 'connected';
         qrCodeData = null;
-        broadcast({ type: 'status', status: 'connected' });
+
+        // Obter número do telefone conectado
+        try {
+          const user = sock.user;
+          if (user && user.id) {
+            connectedPhone = user.id.split(':')[0];
+            console.log(`WhatsApp conectado com o número: ${connectedPhone}`);
+          }
+        } catch (error) {
+          console.error('Erro ao obter número:', error);
+        }
+
+        broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
         console.log('WhatsApp conectado!');
       }
     });
@@ -227,7 +241,11 @@ function broadcast(data) {
 }
 
 app.get('/', (req, res) => {
-  res.json({ status: 'online', connection: connectionStatus });
+  res.json({
+    status: 'online',
+    connection: connectionStatus,
+    phone: connectedPhone
+  });
 });
 
 app.post('/connect', async (req, res) => {
@@ -244,8 +262,9 @@ app.post('/disconnect', async (req, res) => {
     await sock.logout();
     sock = null;
     connectionStatus = 'disconnected';
+    connectedPhone = null;
     qrCodeData = null;
-    broadcast({ type: 'status', status: 'disconnected' });
+    broadcast({ type: 'status', status: 'disconnected', phone: null });
   }
   res.json({ success: true });
 });
@@ -253,7 +272,8 @@ app.post('/disconnect', async (req, res) => {
 app.get('/status', (req, res) => {
   res.json({
     status: connectionStatus,
-    qr: qrCodeData
+    qr: qrCodeData,
+    phone: connectedPhone
   });
 });
 
@@ -713,7 +733,8 @@ wss.on('connection', (ws) => {
 
   ws.send(JSON.stringify({
     type: 'status',
-    status: connectionStatus
+    status: connectionStatus,
+    phone: connectedPhone
   }));
 
   if (qrCodeData) {
