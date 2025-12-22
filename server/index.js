@@ -73,11 +73,21 @@ async function connectToWhatsApp() {
 
         // Obter número do telefone conectado
         try {
-          const user = sock.user;
-          if (user && user.id) {
-            connectedPhone = user.id.split(':')[0];
-            console.log(`WhatsApp conectado com o número: ${connectedPhone}`);
-          }
+          // Aguardar um pouco para garantir que o sock.user está disponível
+          setTimeout(() => {
+            if (sock && sock.user) {
+              const userId = sock.user.id || sock.authState?.creds?.me?.id;
+              if (userId) {
+                // Formato: 5511999999999:XX@s.whatsapp.net
+                connectedPhone = userId.split(':')[0].split('@')[0];
+                console.log(`WhatsApp conectado com o número: ${connectedPhone}`);
+                broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
+              } else {
+                console.log('Usuário conectado, mas número não disponível ainda');
+                broadcast({ type: 'status', status: 'connected', phone: null });
+              }
+            }
+          }, 1000);
         } catch (error) {
           console.error('Erro ao obter número:', error);
         }
