@@ -629,41 +629,61 @@ app.post('/send-message', async (req, res) => {
 
   try {
     let phoneNumber = to;
+    let cleanPhone = to;
 
+    // Remover tudo que não é número
     if (!phoneNumber.includes('@')) {
-      phoneNumber = phoneNumber.replace(/\D/g, '');
-      phoneNumber = phoneNumber + '@s.whatsapp.net';
+      cleanPhone = phoneNumber.replace(/\D/g, '');
+      phoneNumber = cleanPhone + '@s.whatsapp.net';
+    } else {
+      cleanPhone = phoneNumber.split('@')[0];
     }
 
-    await sock.sendMessage(phoneNumber, { text: message });
+    console.log(`Tentando enviar mensagem para: ${phoneNumber}`);
+    console.log(`Telefone limpo: ${cleanPhone}`);
 
+    // Enviar mensagem
+    await sock.sendMessage(phoneNumber, { text: message });
+    console.log(`✓ Mensagem enviada com sucesso para ${phoneNumber}`);
+
+    // Buscar cliente usando telefone limpo ou com formato WhatsApp
     const { data: customer } = await supabase
       .from('customers')
-      .select('id')
-      .eq('phone', to)
+      .select('id, phone')
+      .or(`phone.eq.${cleanPhone},phone.eq.${phoneNumber}`)
       .maybeSingle();
 
+    // Registrar na tabela conversations
     await supabase.from('conversations').insert({
       phone: phoneNumber,
-      customer_phone: to,
+      customer_phone: phoneNumber,
       message: message,
       type: 'sent',
       timestamp: new Date().toISOString()
     });
 
+    // Registrar no histórico
     await supabase.from('conversation_history').insert({
       customer_id: customer?.id || null,
-      phone: to,
+      phone: phoneNumber,
       message: message,
       role: 'assistant',
       timestamp: new Date().toISOString()
     });
 
-    console.log(`Mensagem enviada para ${to}: ${message}`);
-    res.json({ success: true });
+    console.log(`✓ Mensagem registrada no banco para ${customer?.phone || phoneNumber}`);
+    res.json({ success: true, phone: phoneNumber });
   } catch (error) {
-    console.error('Erro ao enviar mensagem:', error);
-    res.status(500).json({ error: error.message });
+    console.error('✗ Erro ao enviar mensagem:', error);
+    console.error('Detalhes do erro:', {
+      message: error.message,
+      stack: error.stack,
+      to: to
+    });
+    res.status(500).json({
+      error: error.message,
+      details: `Falha ao enviar para ${to}`
+    });
   }
 });
 

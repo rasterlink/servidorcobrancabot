@@ -61,12 +61,18 @@ function QueueTab({ supabase, apiUrl }) {
     setSelectedGroup(group.installments)
     setProgress({ current: 0, total: group.count })
 
+    let successCount = 0
+    let errorCount = 0
+    const errors = []
+
     try {
       for (let i = 0; i < group.customers.length; i++) {
         const customer = group.customers[i]
 
         try {
           const message = `Olá ${customer.name}! Identificamos que você possui ${group.installments} parcela(s) em atraso no valor total de R$ ${parseFloat(customer.amount_due).toFixed(2)}. Entre em contato conosco para regularizar sua situação.`
+
+          console.log(`Enviando mensagem para ${customer.name} (${customer.phone})...`)
 
           const response = await fetch(`${apiUrl}/send-message`, {
             method: 'POST',
@@ -77,25 +83,39 @@ function QueueTab({ supabase, apiUrl }) {
             })
           })
 
+          const result = await response.json()
+
           if (!response.ok) {
-            console.error(`Erro ao enviar para ${customer.phone}`)
+            console.error(`Erro ao enviar para ${customer.phone}:`, result)
+            errorCount++
+            errors.push(`${customer.name}: ${result.error || 'Erro desconhecido'}`)
+          } else {
+            console.log(`✓ Mensagem enviada para ${customer.name}`)
+            successCount++
           }
 
           await new Promise(resolve => setTimeout(resolve, 2000))
 
         } catch (error) {
           console.error(`Erro ao processar cliente ${customer.phone}:`, error)
+          errorCount++
+          errors.push(`${customer.name}: ${error.message}`)
         }
 
         setProgress({ current: i + 1, total: group.count })
       }
 
-      alert('Mensagens enviadas com sucesso!')
+      if (errorCount > 0) {
+        alert(`Processo concluído!\n\nEnviadas: ${successCount}\nErros: ${errorCount}\n\nErros:\n${errors.join('\n')}`)
+      } else {
+        alert(`Mensagens enviadas com sucesso!\n\nTotal: ${successCount}`)
+      }
+
       loadQueueGroups()
 
     } catch (error) {
       console.error('Erro ao enviar mensagens:', error)
-      alert('Erro ao enviar mensagens')
+      alert(`Erro ao enviar mensagens: ${error.message}`)
     } finally {
       setSending(false)
       setSelectedGroup(null)
