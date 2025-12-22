@@ -1,10 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { WebSocketServer } from 'ws';
-import makeWASocket, { DisconnectReason, useMultiFileAuthState, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
+import { Server } from 'socket.io';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import pino from 'pino';
+import * as whatsapp from './whatsapp.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,14 +16,6 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im50Y3ZtZW10cGVqeWNjYXR4dWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjc1NjcsImV4cCI6MjA4MTc0MzU2N30.352bvQQuRnTI_C53nyVSWFy-8GHn5BMzdz2h3rEh7CI'
 );
 
-let sock = null;
-let qrCodeData = null;
-let connectionStatus = 'disconnected';
-let connectedPhone = null;
-const clients = new Set();
-
-const logger = pino({ level: 'silent' });
-
 async function getConfig() {
   const { data } = await supabase
     .from('bot_config')
@@ -34,160 +25,63 @@ async function getConfig() {
   return data || { openai_key: '', prompt: 'Você é um assistente útil.', auto_reply: false };
 }
 
-async function connectToWhatsApp() {
+async function handleMessage(msg) {
   try {
-    const { state, saveCreds } = await useMultiFileAuthState('./auth_info');
-    const { version } = await fetchLatestBaileysVersion();
+    const from = msg.from;
+    const text = msg.body || '';
 
-    sock = makeWASocket({
-      version,
-      logger,
-      printQRInTerminal: true,
-      auth: state,
-      getMessage: async () => ({ conversation: '' })
+    console.log(`Mensagem de ${from}: ${text}`);
+
+    await supabase.from('conversations').insert({
+      phone: from,
+      customer_phone: from,
+      message: text,
+      type: 'received',
+      timestamp: new Date().toISOString()
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('phone', from)
+      .maybeSingle();
 
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-
-      if (qr) {
-        qrCodeData = qr;
-        broadcast({ type: 'qr', data: qr });
-      }
-
-      if (connection === 'close') {
-        const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-        connectionStatus = 'disconnected';
-        connectedPhone = null;
-        broadcast({ type: 'status', status: 'disconnected', phone: null });
-
-        if (shouldReconnect) {
-          console.log('Reconectando...');
-          setTimeout(connectToWhatsApp, 3000);
-        }
-      } else if (connection === 'open') {
-        connectionStatus = 'connected';
-        qrCodeData = null;
-        console.log('WhatsApp conectado!');
-
-        // Obter número do telefone conectado
-        setTimeout(async () => {
-          try {
-            // Tentar diferentes formas de obter o número
-            let phoneNumber = null;
-
-            // Método 1: sock.user.id
-            if (sock?.user?.id) {
-              phoneNumber = sock.user.id.split(':')[0].split('@')[0];
-              console.log('Número obtido via sock.user.id:', phoneNumber);
-            }
-
-            // Método 2: authState.creds.me
-            if (!phoneNumber && sock?.authState?.creds?.me?.id) {
-              phoneNumber = sock.authState.creds.me.id.split(':')[0].split('@')[0];
-              console.log('Número obtido via authState.creds.me.id:', phoneNumber);
-            }
-
-            // Método 3: Tentar obter do estado interno
-            if (!phoneNumber) {
-              try {
-                const { state } = await useMultiFileAuthState('./auth_info');
-                if (state?.creds?.me?.id) {
-                  phoneNumber = state.creds.me.id.split(':')[0].split('@')[0];
-                  console.log('Número obtido via state.creds.me.id:', phoneNumber);
-                }
-              } catch (e) {
-                console.log('Não foi possível obter via state:', e.message);
-              }
-            }
-
-            if (phoneNumber) {
-              connectedPhone = phoneNumber;
-              console.log(`Número do telefone conectado: ${connectedPhone}`);
-              broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
-            } else {
-              console.log('Não foi possível obter o número do telefone');
-              broadcast({ type: 'status', status: 'connected', phone: null });
-            }
-          } catch (error) {
-            console.error('Erro ao obter número:', error);
-            broadcast({ type: 'status', status: 'connected', phone: null });
-          }
-        }, 2000);
-      }
+    await supabase.from('conversation_history').insert({
+      customer_id: customer?.id || null,
+      phone: from,
+      message: text,
+      role: 'user',
+      timestamp: new Date().toISOString()
     });
 
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-      for (const msg of messages) {
-        if (!msg.message || msg.key.fromMe) continue;
+    const config = await getConfig();
 
-        // Tentar capturar o número se ainda não foi obtido
-        if (!connectedPhone && sock?.user?.id) {
-          connectedPhone = sock.user.id.split(':')[0].split('@')[0];
-          console.log(`Número capturado via mensagem: ${connectedPhone}`);
-          broadcast({ type: 'status', status: 'connected', phone: connectedPhone });
-        }
-
-        const from = msg.key.remoteJid;
-        const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-
-        console.log(`Mensagem de ${from}: ${text}`);
-
-        await supabase.from('conversations').insert({
-          phone: from,
-          customer_phone: from,
-          message: text,
-          type: 'received',
-          timestamp: new Date().toISOString()
-        });
-
-        const { data: customer } = await supabase
-          .from('customers')
-          .select('*')
-          .eq('phone', from)
+    if (config.auto_reply && config.openai_key && text) {
+      try {
+        const { data: conversationStatus } = await supabase
+          .from('conversations')
+          .select('ai_paused, customer_phone')
+          .eq('customer_phone', from)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
 
-        await supabase.from('conversation_history').insert({
-          customer_id: customer?.id || null,
-          phone: from,
-          message: text,
-          role: 'user',
-          timestamp: new Date().toISOString()
-        });
+        if (conversationStatus?.ai_paused) {
+          console.log(`IA pausada para ${from}. Resposta automática desabilitada.`);
+          return;
+        }
 
-        const config = await getConfig();
+        const { data: history } = await supabase
+          .from('conversation_history')
+          .select('message, role, timestamp')
+          .eq('phone', from)
+          .order('timestamp', { ascending: false })
+          .limit(10);
 
-        if (config.auto_reply && config.openai_key && text) {
-          try {
-            // Verificar se a IA está pausada para esta conversa
-            const { data: conversationStatus } = await supabase
-              .from('conversations')
-              .select('ai_paused, customer_phone')
-              .eq('customer_phone', from)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        let systemPrompt = config.prompt;
 
-            if (conversationStatus?.ai_paused) {
-              console.log(`IA pausada para ${from}. Resposta automática desabilitada.`);
-              continue;
-            }
-
-            // Buscar histórico de conversas (últimas 10 mensagens)
-            const { data: history } = await supabase
-              .from('conversation_history')
-              .select('message, role, timestamp')
-              .eq('phone', from)
-              .order('timestamp', { ascending: false })
-              .limit(10);
-
-            // Construir contexto para a IA
-            let systemPrompt = config.prompt;
-
-            if (customer) {
-              systemPrompt += `\n\n=== INFORMAÇÕES DO CLIENTE ===
+        if (customer) {
+          systemPrompt += `\n\n=== INFORMAÇÕES DO CLIENTE ===
 Nome: ${customer.name}
 Telefone: ${customer.phone}
 ${customer.document ? `CPF/CNPJ: ${customer.document}` : ''}
@@ -208,111 +102,99 @@ ${customer.seller ? `Vendedor: ${customer.seller}` : ''}
 Observações: ${customer.notes || 'Nenhuma'}
 
 IMPORTANTE: Você está falando com ${customer.name}. Use essas informações para negociar o pagamento de R$ ${parseFloat(customer.amount_due).toFixed(2)}.`;
-            } else {
-              systemPrompt += `\n\nATENÇÃO: Este número não está cadastrado no sistema. Pergunte o nome da pessoa e informe que você precisa verificar a situação dela.`;
-            }
-
-            // Construir mensagens com histórico
-            const messages = [{ role: 'system', content: systemPrompt }];
-
-            if (history && history.length > 0) {
-              // Adicionar histórico em ordem cronológica
-              history.reverse().forEach(h => {
-                messages.push({
-                  role: h.role,
-                  content: h.message
-                });
-              });
-            }
-
-            // Adicionar mensagem atual
-            messages.push({ role: 'user', content: text });
-
-            const openai = new OpenAI({ apiKey: config.openai_key });
-
-            const completion = await openai.chat.completions.create({
-              model: 'gpt-3.5-turbo',
-              messages
-            });
-
-            const reply = completion.choices[0].message.content;
-
-            await sock.sendMessage(from, { text: reply });
-
-            await supabase.from('conversations').insert({
-              phone: from,
-              customer_phone: from,
-              message: reply,
-              type: 'sent',
-              timestamp: new Date().toISOString()
-            });
-
-            await supabase.from('conversation_history').insert({
-              customer_id: customer?.id || null,
-              phone: from,
-              message: reply,
-              role: 'assistant',
-              timestamp: new Date().toISOString()
-            });
-
-            console.log(`Resposta enviada para ${customer?.name || from}: ${reply}`);
-          } catch (error) {
-            console.error('Erro ao processar IA:', error);
-          }
+        } else {
+          systemPrompt += `\n\nATENÇÃO: Este número não está cadastrado no sistema. Pergunte o nome da pessoa e informe que você precisa verificar a situação dela.`;
         }
-      }
-    });
 
+        const messages = [{ role: 'system', content: systemPrompt }];
+
+        if (history && history.length > 0) {
+          history.reverse().forEach(h => {
+            messages.push({
+              role: h.role,
+              content: h.message
+            });
+          });
+        }
+
+        messages.push({ role: 'user', content: text });
+
+        const openai = new OpenAI({ apiKey: config.openai_key });
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages
+        });
+
+        const reply = completion.choices[0].message.content;
+        const client = whatsapp.getClient();
+
+        if (client) {
+          await client.sendMessage(from, reply);
+
+          await supabase.from('conversations').insert({
+            phone: from,
+            customer_phone: from,
+            message: reply,
+            type: 'sent',
+            timestamp: new Date().toISOString()
+          });
+
+          await supabase.from('conversation_history').insert({
+            customer_id: customer?.id || null,
+            phone: from,
+            message: reply,
+            role: 'assistant',
+            timestamp: new Date().toISOString()
+          });
+
+          console.log(`Resposta enviada para ${customer?.name || from}: ${reply}`);
+        }
+      } catch (error) {
+        console.error('Erro ao processar IA:', error);
+      }
+    }
   } catch (error) {
-    console.error('Erro ao conectar:', error);
-    connectionStatus = 'disconnected';
-    broadcast({ type: 'status', status: 'disconnected' });
+    console.error('Erro ao processar mensagem:', error);
   }
 }
 
-function broadcast(data) {
-  const message = JSON.stringify(data);
-  clients.forEach(client => {
-    if (client.readyState === 1) {
-      client.send(message);
-    }
-  });
-}
-
 app.get('/', (req, res) => {
+  const status = whatsapp.getConnectionStatus();
   res.json({
     status: 'online',
-    connection: connectionStatus,
-    phone: connectedPhone
+    connection: status.status,
+    phone: status.phoneNumber
   });
 });
 
 app.post('/connect', async (req, res) => {
-  if (connectionStatus === 'connected') {
+  const status = whatsapp.getConnectionStatus();
+
+  if (status.isConnected) {
     return res.json({ success: false, message: 'Já conectado' });
   }
 
-  await connectToWhatsApp();
-  res.json({ success: true });
+  try {
+    whatsapp.setMessageHandler(handleMessage);
+    await whatsapp.initWhatsApp();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 app.post('/disconnect', async (req, res) => {
-  if (sock) {
-    await sock.logout();
-    sock = null;
-    connectionStatus = 'disconnected';
-    connectedPhone = null;
-    qrCodeData = null;
-    broadcast({ type: 'status', status: 'disconnected', phone: null });
-  }
+  await whatsapp.disconnectWhatsApp();
   res.json({ success: true });
 });
 
 app.get('/status', (req, res) => {
+  const status = whatsapp.getConnectionStatus();
   res.json({
-    status: connectionStatus,
-    qr: qrCodeData,
-    phone: connectedPhone
+    status: status.status,
+    qr: status.qrCode,
+    phone: status.phoneNumber
   });
 });
 
@@ -414,7 +296,6 @@ app.post('/test-ai', async (req, res) => {
   }
 });
 
-// Rotas para gerenciamento de clientes
 app.get('/customers', async (req, res) => {
   const { data } = await supabase
     .from('customers')
@@ -484,21 +365,17 @@ app.post('/customers/bulk', async (req, res) => {
   }
 
   try {
-    // Buscar todos os clientes que não estão pagos
     const { data: existingCustomers } = await supabase
       .from('customers')
       .select('id, phone, name, status, notes')
       .neq('status', 'paid');
 
-    // Telefones da nova lista
     const newPhones = customers.map(c => c.phone);
 
-    // Clientes que não estão mais na nova lista = deram baixa/pagaram
     const customersToMarkAsPaid = existingCustomers
       ? existingCustomers.filter(c => !newPhones.includes(c.phone))
       : [];
 
-    // Marcar como pago os que não estão mais na lista
     if (customersToMarkAsPaid.length > 0) {
       const today = new Date().toISOString().split('T')[0];
 
@@ -515,7 +392,6 @@ app.post('/customers/bulk', async (req, res) => {
       }
     }
 
-    // Inserir/atualizar os clientes da nova lista
     const validCustomers = customers.map(c => ({
       phone: c.phone,
       name: c.name,
@@ -623,37 +499,30 @@ app.post('/send-message', async (req, res) => {
     return res.status(400).json({ error: 'Número e mensagem são obrigatórios' });
   }
 
-  if (!sock || connectionStatus !== 'connected') {
+  const status = whatsapp.getConnectionStatus();
+  if (!status.isConnected) {
     return res.status(503).json({ error: 'WhatsApp não está conectado' });
   }
 
   try {
-    let phoneNumber = to;
-    let cleanPhone = to;
-
-    // Remover tudo que não é número
-    if (!phoneNumber.includes('@')) {
-      cleanPhone = phoneNumber.replace(/\D/g, '');
-      phoneNumber = cleanPhone + '@s.whatsapp.net';
-    } else {
-      cleanPhone = phoneNumber.split('@')[0];
+    const client = whatsapp.getClient();
+    if (!client) {
+      return res.status(503).json({ error: 'Cliente WhatsApp não disponível' });
     }
 
-    console.log(`Tentando enviar mensagem para: ${phoneNumber}`);
-    console.log(`Telefone limpo: ${cleanPhone}`);
+    let phoneNumber = to.replace(/\D/g, '');
+    if (!phoneNumber.includes('@')) {
+      phoneNumber = phoneNumber + '@c.us';
+    }
 
-    // Enviar mensagem
-    await sock.sendMessage(phoneNumber, { text: message });
-    console.log(`✓ Mensagem enviada com sucesso para ${phoneNumber}`);
+    await client.sendMessage(phoneNumber, message);
 
-    // Buscar cliente usando telefone limpo ou com formato WhatsApp
     const { data: customer } = await supabase
       .from('customers')
-      .select('id, phone')
-      .or(`phone.eq.${cleanPhone},phone.eq.${phoneNumber}`)
+      .select('id')
+      .eq('phone', phoneNumber)
       .maybeSingle();
 
-    // Registrar na tabela conversations
     await supabase.from('conversations').insert({
       phone: phoneNumber,
       customer_phone: phoneNumber,
@@ -662,7 +531,6 @@ app.post('/send-message', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    // Registrar no histórico
     await supabase.from('conversation_history').insert({
       customer_id: customer?.id || null,
       phone: phoneNumber,
@@ -671,19 +539,10 @@ app.post('/send-message', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    console.log(`✓ Mensagem registrada no banco para ${customer?.phone || phoneNumber}`);
     res.json({ success: true, phone: phoneNumber });
   } catch (error) {
-    console.error('✗ Erro ao enviar mensagem:', error);
-    console.error('Detalhes do erro:', {
-      message: error.message,
-      stack: error.stack,
-      to: to
-    });
-    res.status(500).json({
-      error: error.message,
-      details: `Falha ao enviar para ${to}`
-    });
+    console.error('Erro ao enviar mensagem:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -705,12 +564,18 @@ app.post('/conversations/:id/send-message', async (req, res) => {
     return res.status(404).json({ error: 'Conversa não encontrada' });
   }
 
-  if (!sock || connectionStatus !== 'connected') {
+  const status = whatsapp.getConnectionStatus();
+  if (!status.isConnected) {
     return res.status(503).json({ error: 'WhatsApp não está conectado' });
   }
 
   try {
-    await sock.sendMessage(conversation.customer_phone, { text: message });
+    const client = whatsapp.getClient();
+    if (!client) {
+      return res.status(503).json({ error: 'Cliente WhatsApp não disponível' });
+    }
+
+    await client.sendMessage(conversation.customer_phone, message);
 
     const { data: customer } = await supabase
       .from('customers')
@@ -784,27 +649,30 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
 
-const wss = new WebSocketServer({ server });
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
+});
 
-wss.on('connection', (ws) => {
-  clients.add(ws);
-  console.log('Cliente WebSocket conectado');
+whatsapp.setIOInstance(io);
 
-  ws.send(JSON.stringify({
-    type: 'status',
-    status: connectionStatus,
-    phone: connectedPhone
-  }));
+io.on('connection', (socket) => {
+  console.log('Cliente Socket.IO conectado');
 
-  if (qrCodeData) {
-    ws.send(JSON.stringify({
-      type: 'qr',
-      data: qrCodeData
-    }));
+  const status = whatsapp.getConnectionStatus();
+  socket.emit('status_update', status);
+
+  if (status.qrCode) {
+    socket.emit('qr_code', {
+      success: true,
+      qrCode: status.qrCode,
+      message: 'QR Code disponível'
+    });
   }
 
-  ws.on('close', () => {
-    clients.delete(ws);
-    console.log('Cliente WebSocket desconectado');
+  socket.on('disconnect', () => {
+    console.log('Cliente Socket.IO desconectado');
   });
 });
