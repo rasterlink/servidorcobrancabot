@@ -1,39 +1,21 @@
-FROM node:20
+FROM node:18-slim
+
+RUN apt-get update && apt-get install -y \
+    chromium \
+    chromium-sandbox \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    wget \
-    ca-certificates \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
-    libdbus-1-3 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libwayland-client0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxkbcommon0 \
-    libxrandr2 \
-    xdg-utils \
-    libu2f-udev \
-    libvulkan1 \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm install
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 3002
 
 CMD ["npm", "start"]

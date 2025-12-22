@@ -1,171 +1,132 @@
 import pkg from 'whatsapp-web.js';
 const { Client, LocalAuth } = pkg;
-import QRCode from 'qrcode';
+import qrcode from 'qrcode';
 
 let client = null;
 let qrCodeData = null;
-let connectionStatus = {
-  isConnected: false,
-  phoneNumber: null,
-  qrCode: null,
-  status: 'disconnected'
-};
+let connectionStatus = 'disconnected';
+let phoneNumber = null;
+let onMessageCallback = null;
+let onStatusCallback = null;
 
-let ioInstance = null;
-let messageHandler = null;
-
-function normalizePhoneNumber(phone) {
-  if (!phone) return phone;
-
-  const cleanPhone = phone.replace(/\D/g, '');
-
-  if (cleanPhone.startsWith('55') && cleanPhone.length === 12) {
-    const ddd = cleanPhone.substring(2, 4);
-    const number = cleanPhone.substring(4);
-    return `55${ddd}9${number}`;
+export function initialize() {
+  if (client) {
+    return client;
   }
 
-  return cleanPhone;
-}
-
-export function setIOInstance(io) {
-  ioInstance = io;
-}
-
-export function setMessageHandler(handler) {
-  messageHandler = handler;
-}
-
-export function getConnectionStatus() {
-  return connectionStatus;
-}
-
-export async function initWhatsApp(onConnected) {
-  return new Promise((resolve, reject) => {
-    try {
-      if (client) {
-        return resolve({
-          success: false,
-          message: 'Cliente já inicializado'
-        });
-      }
-
-      client = new Client({
-        authStrategy: new LocalAuth({
-          dataPath: './auth_session'
-        }),
-        puppeteer: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-          ]
-        }
-      });
-
-      client.on('qr', async (qr) => {
-        console.log('QR Code recebido! Escaneie com seu WhatsApp.');
-
-        qrCodeData = await QRCode.toDataURL(qr);
-        connectionStatus = {
-          isConnected: false,
-          phoneNumber: null,
-          qrCode: qrCodeData,
-          status: 'qr_pending'
-        };
-
-        if (ioInstance) {
-          ioInstance.emit('qr_code', {
-            success: true,
-            qrCode: qrCodeData,
-            message: 'QR Code gerado. Escaneie com seu WhatsApp.'
-          });
-          ioInstance.emit('status_update', connectionStatus);
-        }
-
-        resolve({
-          success: true,
-          qrCode: qrCodeData,
-          message: 'QR Code gerado. Escaneie com seu WhatsApp.'
-        });
-      });
-
-      client.on('ready', async () => {
-        const info = client.info;
-        const phoneNumber = normalizePhoneNumber(info.wid.user);
-
-        connectionStatus = {
-          isConnected: true,
-          phoneNumber: phoneNumber,
-          qrCode: null,
-          status: 'connected'
-        };
-
-        console.log(`WhatsApp conectado! Número: ${phoneNumber}`);
-
-        if (ioInstance) {
-          ioInstance.emit('status_update', connectionStatus);
-        }
-
-        if (messageHandler) {
-          client.on('message', messageHandler);
-          console.log('Listener de mensagens registrado');
-        }
-
-        if (onConnected) {
-          await onConnected(client);
-        }
-      });
-
-      client.on('authenticated', () => {
-        console.log('Autenticado com sucesso!');
-      });
-
-      client.on('auth_failure', (msg) => {
-        console.error('Falha na autenticação:', msg);
-        connectionStatus.status = 'auth_failed';
-      });
-
-      client.on('disconnected', (reason) => {
-        console.log('Cliente desconectado:', reason);
-        connectionStatus = {
-          isConnected: false,
-          phoneNumber: null,
-          qrCode: null,
-          status: 'disconnected'
-        };
-        client = null;
-      });
-
-      client.initialize();
-
-    } catch (error) {
-      console.error('Erro ao inicializar WhatsApp:', error);
-      reject({
-        success: false,
-        message: error.message
-      });
+  client = new Client({
+    authStrategy: new LocalAuth({ clientId: 'server2' }),
+    puppeteer: {
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
   });
+
+  client.on('qr', async (qr) => {
+    console.log('🔳 QR Code gerado');
+    qrCodeData = await qrcode.toDataURL(qr);
+    connectionStatus = 'qr';
+    if (onStatusCallback) {
+      onStatusCallback({ status: 'qr', qr: qrCodeData, phone: null });
+    }
+  });
+
+  client.on('ready', () => {
+    console.log('✅ WhatsApp conectado!');
+    phoneNumber = client.info.wid.user;
+    connectionStatus = 'connected';
+    qrCodeData = null;
+    if (onStatusCallback) {
+      onStatusCallback({ status: 'connected', qr: null, phone: phoneNumber });
+    }
+  });
+
+  client.on('authenticated', () => {
+    console.log('🔐 Autenticado');
+    connectionStatus = 'authenticated';
+  });
+
+  client.on('auth_failure', () => {
+    console.log('❌ Falha na autenticação');
+    connectionStatus = 'disconnected';
+    qrCodeData = null;
+    if (onStatusCallback) {
+      onStatusCallback({ status: 'disconnected', qr: null, phone: null });
+    }
+  });
+
+  client.on('disconnected', () => {
+    console.log('⚠️ Desconectado');
+    connectionStatus = 'disconnected';
+    phoneNumber = null;
+    qrCodeData = null;
+    if (onStatusCallback) {
+      onStatusCallback({ status: 'disconnected', qr: null, phone: null });
+    }
+  });
+
+  client.on('message', async (msg) => {
+    if (onMessageCallback) {
+      onMessageCallback(msg);
+    }
+  });
+
+  return client;
 }
 
-export async function disconnectWhatsApp() {
+export async function connect() {
+  if (!client) {
+    initialize();
+  }
+
+  if (connectionStatus === 'connected') {
+    return { success: true, message: 'Já conectado', qr: null };
+  }
+
+  try {
+    await client.initialize();
+    return { success: true, message: 'Inicializando...', qr: qrCodeData };
+  } catch (error) {
+    console.error('Erro ao conectar:', error);
+    return { success: false, message: error.message, qr: null };
+  }
+}
+
+export async function disconnect() {
   if (client) {
     await client.destroy();
     client = null;
+    connectionStatus = 'disconnected';
+    phoneNumber = null;
+    qrCodeData = null;
+    return { success: true };
+  }
+  return { success: false };
+}
+
+export async function sendMessage(to, message) {
+  if (!client || connectionStatus !== 'connected') {
+    throw new Error('WhatsApp não conectado');
   }
 
-  connectionStatus = {
-    isConnected: false,
-    phoneNumber: null,
-    qrCode: null,
-    status: 'disconnected'
+  const chatId = to.includes('@c.us') ? to : `${to}@c.us`;
+  const sentMsg = await client.sendMessage(chatId, message);
+  return sentMsg;
+}
+
+export function getStatus() {
+  return {
+    status: connectionStatus,
+    phone: phoneNumber,
+    qr: qrCodeData
   };
+}
+
+export function onMessage(callback) {
+  onMessageCallback = callback;
+}
+
+export function onStatus(callback) {
+  onStatusCallback = callback;
 }
 
 export function getClient() {
