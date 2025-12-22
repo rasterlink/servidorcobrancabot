@@ -1,6 +1,0 @@
-phone,name,amount_due,due_date,invoice_number,notes,status
-5511999999999@s.whatsapp.net,João Silva,150.50,2024-12-25,INV-001,Cliente antigo com histórico de pagamento,pending
-5511888888888@s.whatsapp.net,Maria Santos,320.00,2024-12-20,INV-002,Primeira compra,overdue
-5511777777777@s.whatsapp.net,Pedro Oliveira,89.90,2024-12-30,INV-003,Cliente VIP,pending
-5511666666666@s.whatsapp.net,Ana Costa,450.00,2024-12-15,INV-004,Pagamento parcelado,negotiating
-5511555555555@s.whatsapp.net,Carlos Mendes,1200.00,2024-12-28,INV-005,Grande cliente corporativo,pending
