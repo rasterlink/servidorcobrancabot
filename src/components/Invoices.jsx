@@ -7,11 +7,19 @@ function Invoices() {
   const [invoices, setInvoices] = useState([])
   const [filteredInvoices, setFilteredInvoices] = useState([])
   const [customers, setCustomers] = useState([])
+  const [whatsappConnections, setWhatsappConnections] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showSendModal, setShowSendModal] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [sendOptions, setSendOptions] = useState({
+    sendEmail: true,
+    sendWhatsApp: false,
+    whatsappConnectionId: ''
+  })
   const [formData, setFormData] = useState({
     id: null,
     customer_id: '',
@@ -34,17 +42,19 @@ function Invoices() {
 
   async function loadData() {
     try {
-      const [invoicesRes, customersRes] = await Promise.all([
+      const [invoicesRes, customersRes, whatsappRes] = await Promise.all([
         supabase
           .from('invoices')
-          .select('*, customer:customers(name, email)')
+          .select('*, customer:customers(name, email, phone)')
           .order('created_at', { ascending: false }),
-        supabase.from('customers').select('*').eq('active', true)
+        supabase.from('customers').select('*').eq('active', true),
+        supabase.from('whatsapp_connections').select('*').eq('status', 'connected').eq('is_active', true)
       ])
 
       setInvoices(invoicesRes.data || [])
       setFilteredInvoices(invoicesRes.data || [])
       setCustomers(customersRes.data || [])
+      setWhatsappConnections(whatsappRes.data || [])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -150,15 +160,60 @@ function Invoices() {
     }
   }
 
-  async function handleSendInvoice(invoice) {
+  function openSendModal(invoice) {
+    setSelectedInvoice(invoice)
+    setSendOptions({
+      sendEmail: true,
+      sendWhatsApp: false,
+      whatsappConnectionId: whatsappConnections[0]?.id || ''
+    })
+    setShowSendModal(true)
+  }
+
+  function closeSendModal() {
+    setShowSendModal(false)
+    setSelectedInvoice(null)
+  }
+
+  async function handleSendInvoice() {
+    if (!selectedInvoice) return
+
     try {
+      const sendType = sendOptions.sendEmail && sendOptions.sendWhatsApp ? 'both' :
+                       sendOptions.sendWhatsApp ? 'whatsapp' : 'email'
+
+      if (sendOptions.sendEmail) {
+        console.log(`Enviando email para ${selectedInvoice.customer.email}`)
+      }
+
+      if (sendOptions.sendWhatsApp && selectedInvoice.customer.phone) {
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-manager`
+        const message = `Olá ${selectedInvoice.customer.name}! Seu boleto no valor de R$ ${parseFloat(selectedInvoice.amount).toFixed(2)} está disponível. Vencimento: ${new Date(selectedInvoice.due_date).toLocaleDateString('pt-BR')}`
+
+        await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'send',
+            connectionId: sendOptions.whatsappConnectionId,
+            phone: selectedInvoice.customer.phone,
+            message
+          })
+        })
+      }
+
       await supabase.from('sending_history').insert([{
-        invoice_id: invoice.id,
+        invoice_id: selectedInvoice.id,
         status: 'success',
-        send_type: 'email'
+        send_type: sendType,
+        whatsapp_connection_id: sendOptions.sendWhatsApp ? sendOptions.whatsappConnectionId : null
       }])
 
-      alert(`Boleto enviado para ${invoice.customer.email}`)
+      alert(`Boleto enviado com sucesso!`)
+      closeSendModal()
       loadData()
     } catch (error) {
       console.error('Erro ao enviar boleto:', error)
@@ -330,7 +385,7 @@ exemplo@email.com,150.50,2025-01-15,1,2025,123456789,https://link-do-pdf.com`
                     <div className="action-buttons">
                       <button
                         className="btn-icon btn-send"
-                        onClick={() => handleSendInvoice(invoice)}
+                        onClick={() => openSendModal(invoice)}
                         title="Enviar"
                       >
                         <Send size={18} />
@@ -499,6 +554,79 @@ exemplo@email.com,150.50,2025-01-15,1,2025,123456789,https://link-do-pdf.com`
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowImportModal(false)}>
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSendModal && selectedInvoice && (
+        <div className="modal-overlay" onClick={closeSendModal}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Enviar Boleto</h3>
+
+            <div className="send-info">
+              <p><strong>Cliente:</strong> {selectedInvoice.customer.name}</p>
+              <p><strong>Valor:</strong> R$ {parseFloat(selectedInvoice.amount).toFixed(2)}</p>
+              <p><strong>Vencimento:</strong> {new Date(selectedInvoice.due_date).toLocaleDateString('pt-BR')}</p>
+            </div>
+
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={sendOptions.sendEmail}
+                  onChange={(e) => setSendOptions({...sendOptions, sendEmail: e.target.checked})}
+                />
+                Enviar por Email ({selectedInvoice.customer.email})
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={sendOptions.sendWhatsApp}
+                  onChange={(e) => setSendOptions({...sendOptions, sendWhatsApp: e.target.checked})}
+                  disabled={!selectedInvoice.customer.phone || whatsappConnections.length === 0}
+                />
+                Enviar por WhatsApp
+                {selectedInvoice.customer.phone ? ` (${selectedInvoice.customer.phone})` : ' (sem telefone)'}
+              </label>
+              {whatsappConnections.length === 0 && (
+                <small style={{color: '#e74c3c', marginLeft: '1.5rem', display: 'block'}}>
+                  Nenhuma conexão WhatsApp ativa disponível
+                </small>
+              )}
+            </div>
+
+            {sendOptions.sendWhatsApp && whatsappConnections.length > 0 && (
+              <div className="form-group">
+                <label>Conexão WhatsApp</label>
+                <select
+                  value={sendOptions.whatsappConnectionId}
+                  onChange={(e) => setSendOptions({...sendOptions, whatsappConnectionId: e.target.value})}
+                >
+                  {whatsappConnections.map(conn => (
+                    <option key={conn.id} value={conn.id}>
+                      {conn.name} ({conn.phone_number})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeSendModal}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSendInvoice}
+                disabled={!sendOptions.sendEmail && !sendOptions.sendWhatsApp}
+              >
+                Enviar
               </button>
             </div>
           </div>

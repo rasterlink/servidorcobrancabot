@@ -152,3 +152,19 @@
     width: 100%;
   }
 }
+
+.send-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.send-info p {
+  margin: 0.5rem 0;
+  color: #495057;
+}
+
+.send-info strong {
+  color: #2c3e50;
+}

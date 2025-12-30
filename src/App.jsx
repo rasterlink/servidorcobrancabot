@@ -2,7 +2,8 @@ import { useState } from 'react'
 import Dashboard from './components/Dashboard'
 import Customers from './components/Customers'
 import Invoices from './components/Invoices'
-import { FileText, Users, LayoutDashboard } from 'lucide-react'
+import WhatsApp from './components/WhatsApp'
+import { FileText, Users, LayoutDashboard, MessageCircle } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -42,12 +43,20 @@ function App() {
             <FileText size={20} />
             Boletos
           </button>
+          <button
+            className={`nav-button ${activeTab === 'whatsapp' ? 'active' : ''}`}
+            onClick={() => setActiveTab('whatsapp')}
+          >
+            <MessageCircle size={20} />
+            WhatsApp
+          </button>
         </nav>
 
         <main className="main-content">
           {activeTab === 'dashboard' && <Dashboard />}
           {activeTab === 'customers' && <Customers />}
           {activeTab === 'invoices' && <Invoices />}
+          {activeTab === 'whatsapp' && <WhatsApp />}
         </main>
       </div>
     </div>
