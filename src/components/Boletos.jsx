@@ -190,11 +190,12 @@ export default function Boletos() {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const separator = lines[0].includes(';') ? ';' : ',';
+    const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
     const rows = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
+      const values = lines[i].split(separator).map(v => v.trim());
       const row = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
@@ -233,13 +234,24 @@ export default function Boletos() {
         setImportProgress({ current: i + 1, total: rows.length });
 
         try {
-          const name = row.nome || row.name;
-          const cpfCnpj = row.cpf_cnpj || row.cpf || row.cnpj || row.documento;
-          const email = row.email;
-          const phone = row.telefone || row.phone || row.fone;
-          const value = parseFloat(row.valor || row.value || 0);
-          const dueDate = row.vencimento || row.due_date || row.data_vencimento;
-          const description = row.descricao || row.description || row.desc || 'Boleto';
+          const name = row['nome/razão social'] || row.nome || row.name || row['nome'];
+          const cpfCnpj = (row['cnpj/cpf'] || row.cpf_cnpj || row.cpf || row.cnpj || row.documento || '').replace(/[.\-/]/g, '');
+          const email = row.email || '';
+          const phone = row['telefone celular'] || row.telefone || row.phone || row.fone || '';
+
+          let valueStr = row['valor da parcela'] || row.valor || row.value || '0';
+          valueStr = valueStr.replace(/[R$\s]/g, '').replace(',', '.');
+          const value = parseFloat(valueStr);
+
+          let dueDate = row.vencimento || row.due_date || row.data_vencimento || '';
+          if (dueDate && dueDate.includes('/')) {
+            const parts = dueDate.split('/');
+            if (parts.length === 3) {
+              dueDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+
+          const description = row.descricao || row.description || row.desc || 'Mensalidade de rastreamento';
 
           if (!name || !cpfCnpj) {
             errors.push(`Linha ${i + 2}: Nome ou CPF/CNPJ faltando`);
@@ -247,8 +259,8 @@ export default function Boletos() {
             continue;
           }
 
-          if (!value || value <= 0) {
-            errors.push(`Linha ${i + 2}: Valor inválido`);
+          if (!value || value <= 0 || isNaN(value)) {
+            errors.push(`Linha ${i + 2}: Valor inválido (${valueStr})`);
             errorCount++;
             continue;
           }
@@ -344,8 +356,8 @@ export default function Boletos() {
   };
 
   const downloadCSVTemplate = () => {
-    const template = 'nome,cpf_cnpj,email,telefone,valor,vencimento,descricao\nJoão Silva,12345678900,joao@email.com,11999999999,100.00,2024-12-31,Mensalidade';
-    const blob = new Blob([template], { type: 'text/csv' });
+    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Valor da Parcela;Vencimento;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;R$ 100,00;31/12/2025;Mensalidade de rastreamento\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;R$ 150,00;31/12/2025;Mensalidade de rastreamento';
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
