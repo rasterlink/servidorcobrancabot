@@ -27,6 +27,9 @@ interface CreateBoletoRequest {
     cpfCnpj: string;
     email?: string;
     phone?: string;
+    contractNumber?: string;
+    vehiclePlate?: string;
+    vehicleChassis?: string;
   };
   billingType: string;
   value: number;
@@ -135,12 +138,22 @@ Deno.serve(async (req: Request) => {
       }
 
       // Create payment (boleto) in Asas
+      // Add vehicle info to description if available
+      let fullDescription = boletoData.description;
+      if (boletoData.customer.contractNumber || boletoData.customer.vehiclePlate || boletoData.customer.vehicleChassis) {
+        const vehicleInfo = [];
+        if (boletoData.customer.contractNumber) vehicleInfo.push(`Contrato: ${boletoData.customer.contractNumber}`);
+        if (boletoData.customer.vehiclePlate) vehicleInfo.push(`Placa: ${boletoData.customer.vehiclePlate}`);
+        if (boletoData.customer.vehicleChassis) vehicleInfo.push(`Chassi: ${boletoData.customer.vehicleChassis}`);
+        fullDescription = `${boletoData.description} - ${vehicleInfo.join(' | ')}`;
+      }
+
       const paymentPayload = {
         customer: asasCustomerId,
         billingType: boletoData.billingType,
         value: boletoData.value,
         dueDate: boletoData.dueDate,
-        description: boletoData.description,
+        description: fullDescription,
         externalReference: boletoData.externalReference,
       };
 
@@ -209,7 +222,12 @@ Deno.serve(async (req: Request) => {
             name,
             email,
             phone,
-            cpf_cnpj
+            cpf_cnpj,
+            contract_number,
+            vehicle_plate,
+            vehicle_chassis,
+            vehicle_brand,
+            vehicle_model
           )
         `)
         .order("created_at", { ascending: false });

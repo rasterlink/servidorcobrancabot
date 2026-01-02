@@ -107,6 +107,9 @@ export default function Boletos() {
                 cpfCnpj: customer.cpf_cnpj,
                 email: customer.email,
                 phone: customer.phone,
+                contractNumber: customer.contract_number,
+                vehiclePlate: customer.vehicle_plate,
+                vehicleChassis: customer.vehicle_chassis,
               },
               billingType: 'BOLETO',
               value: parseFloat(formData.value),
@@ -255,6 +258,11 @@ export default function Boletos() {
 
           const email = row.email || '';
           const phone = row['telefone celular'] || row.telefone || row.phone || row.fone || '';
+          const contractNumber = row.proposta || row['numero do contrato'] || row.contrato || '';
+          const vehiclePlate = row.placa || row.plate || '';
+          const vehicleChassis = row.chassi || row.chassis || '';
+          const vehicleBrand = row.marca || row.brand || '';
+          const vehicleModel = row.modelo || row.model || '';
 
           let valueStr = row['valor da parcela'] || row.valor || row.value || '0';
           valueStr = valueStr.replace(/[R$\s]/g, '').replace(',', '.');
@@ -314,6 +322,11 @@ export default function Boletos() {
                 cpf_cnpj: cpfCnpj,
                 email,
                 phone,
+                contract_number: contractNumber,
+                vehicle_plate: vehiclePlate,
+                vehicle_chassis: vehicleChassis,
+                vehicle_brand: vehicleBrand,
+                vehicle_model: vehicleModel,
               })
               .select()
               .single();
@@ -341,6 +354,9 @@ export default function Boletos() {
                 cpfCnpj: customer.data.cpf_cnpj,
                 email: customer.data.email,
                 phone: customer.data.phone,
+                contractNumber: customer.data.contract_number,
+                vehiclePlate: customer.data.vehicle_plate,
+                vehicleChassis: customer.data.vehicle_chassis,
               },
               billingType: 'BOLETO',
               value,
@@ -385,7 +401,7 @@ export default function Boletos() {
   };
 
   const downloadCSVTemplate = () => {
-    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Valor da Parcela;Vencimento;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;R$ 100,00;31/12/2025;Mensalidade de rastreamento\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;R$ 150,00;31/12/2025;Mensalidade de rastreamento';
+    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Proposta;Placa;Chassi;Marca;Modelo;Valor da Parcela;Vencimento;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;18149;ABC1234;9C2KF4300PR007083;HONDA;ADV 150;R$ 120,00;31/12/2025;Mensalidade de rastreamento\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;18150;XYZ5678;1HGBH41JXMN109186;YAMAHA;NMAX 160;R$ 150,00;31/12/2025;Mensalidade de rastreamento';
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -556,6 +572,7 @@ export default function Boletos() {
             <thead>
               <tr>
                 <th>Cliente</th>
+                <th>Contrato/Veículo</th>
                 <th>Valor</th>
                 <th>Vencimento</th>
                 <th>Descrição</th>
@@ -571,6 +588,22 @@ export default function Boletos() {
                       <div className="customer-name">{boleto.customers?.name}</div>
                       {boleto.customers?.email && (
                         <div className="customer-email">{boleto.customers.email}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="vehicle-info">
+                      {boleto.customers?.contract_number && (
+                        <div><strong>Contrato:</strong> {boleto.customers.contract_number}</div>
+                      )}
+                      {boleto.customers?.vehicle_plate && (
+                        <div><strong>Placa:</strong> {boleto.customers.vehicle_plate}</div>
+                      )}
+                      {boleto.customers?.vehicle_chassis && (
+                        <div><strong>Chassi:</strong> {boleto.customers.vehicle_chassis}</div>
+                      )}
+                      {!boleto.customers?.contract_number && !boleto.customers?.vehicle_plate && !boleto.customers?.vehicle_chassis && (
+                        <span>-</span>
                       )}
                     </div>
                   </td>
@@ -618,7 +651,7 @@ export default function Boletos() {
               ))}
               {boletos.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="empty-state">
+                  <td colSpan="7" className="empty-state">
                     Nenhum boleto gerado ainda
                   </td>
                 </tr>

@@ -275,6 +275,20 @@
   color: #64748b;
 }
 
+.vehicle-info {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.vehicle-info div {
+  margin: 2px 0;
+}
+
+.vehicle-info strong {
+  font-weight: 600;
+  color: #334155;
+}
+
 .value-cell {
   font-weight: 600;
   color: #059669;

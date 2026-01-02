@@ -16,6 +16,11 @@ function Customers() {
     phone: '',
     cpf_cnpj: '',
     pix_key: '',
+    contract_number: '',
+    vehicle_plate: '',
+    vehicle_chassis: '',
+    vehicle_brand: '',
+    vehicle_model: '',
     active: true
   })
 
@@ -62,6 +67,11 @@ function Customers() {
         phone: '',
         cpf_cnpj: '',
         pix_key: '',
+        contract_number: '',
+        vehicle_plate: '',
+        vehicle_chassis: '',
+        vehicle_brand: '',
+        vehicle_model: '',
         active: true
       })
     }
@@ -77,6 +87,11 @@ function Customers() {
       phone: '',
       cpf_cnpj: '',
       pix_key: '',
+      contract_number: '',
+      vehicle_plate: '',
+      vehicle_chassis: '',
+      vehicle_brand: '',
+      vehicle_model: '',
       active: true
     })
   }
@@ -94,6 +109,11 @@ function Customers() {
             phone: formData.phone,
             cpf_cnpj: formData.cpf_cnpj,
             pix_key: formData.pix_key,
+            contract_number: formData.contract_number,
+            vehicle_plate: formData.vehicle_plate,
+            vehicle_chassis: formData.vehicle_chassis,
+            vehicle_brand: formData.vehicle_brand,
+            vehicle_model: formData.vehicle_model,
             active: formData.active
           })
           .eq('id', formData.id)
@@ -108,6 +128,11 @@ function Customers() {
             phone: formData.phone,
             cpf_cnpj: formData.cpf_cnpj,
             pix_key: formData.pix_key,
+            contract_number: formData.contract_number,
+            vehicle_plate: formData.vehicle_plate,
+            vehicle_chassis: formData.vehicle_chassis,
+            vehicle_brand: formData.vehicle_brand,
+            vehicle_model: formData.vehicle_model,
             active: formData.active
           }])
 
@@ -282,6 +307,56 @@ function Customers() {
                   placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
                   value={formData.pix_key}
                   onChange={(e) => setFormData({...formData, pix_key: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Número do Contrato</label>
+                <input
+                  type="text"
+                  placeholder="Número do contrato Rasterlink"
+                  value={formData.contract_number}
+                  onChange={(e) => setFormData({...formData, contract_number: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Placa do Veículo</label>
+                <input
+                  type="text"
+                  placeholder="ABC1234"
+                  value={formData.vehicle_plate}
+                  onChange={(e) => setFormData({...formData, vehicle_plate: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Chassi do Veículo</label>
+                <input
+                  type="text"
+                  placeholder="9C2KF4300PR007083"
+                  value={formData.vehicle_chassis}
+                  onChange={(e) => setFormData({...formData, vehicle_chassis: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Marca do Veículo</label>
+                <input
+                  type="text"
+                  placeholder="Honda, Yamaha, etc"
+                  value={formData.vehicle_brand}
+                  onChange={(e) => setFormData({...formData, vehicle_brand: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Modelo do Veículo</label>
+                <input
+                  type="text"
+                  placeholder="ADV 150, CB 500, etc"
+                  value={formData.vehicle_model}
+                  onChange={(e) => setFormData({...formData, vehicle_model: e.target.value})}
                 />
               </div>
 
