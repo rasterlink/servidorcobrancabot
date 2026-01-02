@@ -4,7 +4,8 @@ import Customers from './components/Customers'
 import Invoices from './components/Invoices'
 import WhatsApp from './components/WhatsApp'
 import BulkMessages from './components/BulkMessages'
-import { FileText, Users, LayoutDashboard, MessageCircle, Send } from 'lucide-react'
+import Boletos from './components/Boletos'
+import { FileText, Users, LayoutDashboard, MessageCircle, Send, DollarSign } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -58,6 +59,13 @@ function App() {
             <Send size={20} />
             Envio em Massa
           </button>
+          <button
+            className={`nav-button ${activeTab === 'boletos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('boletos')}
+          >
+            <DollarSign size={20} />
+            Boletos Asas
+          </button>
         </nav>
 
         <main className="main-content">
@@ -66,6 +74,7 @@ function App() {
           {activeTab === 'invoices' && <Invoices />}
           {activeTab === 'whatsapp' && <WhatsApp />}
           {activeTab === 'bulk' && <BulkMessages />}
+          {activeTab === 'boletos' && <Boletos />}
         </main>
       </div>
     </div>
