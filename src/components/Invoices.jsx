@@ -7,7 +7,6 @@ function Invoices() {
   const [invoices, setInvoices] = useState([])
   const [filteredInvoices, setFilteredInvoices] = useState([])
   const [customers, setCustomers] = useState([])
-  const [whatsappConnections, setWhatsappConnections] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -17,8 +16,7 @@ function Invoices() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [sendOptions, setSendOptions] = useState({
     sendEmail: true,
-    sendWhatsApp: false,
-    whatsappConnectionId: ''
+    sendWhatsApp: false
   })
   const [formData, setFormData] = useState({
     id: null,
@@ -42,19 +40,17 @@ function Invoices() {
 
   async function loadData() {
     try {
-      const [invoicesRes, customersRes, whatsappRes] = await Promise.all([
+      const [invoicesRes, customersRes] = await Promise.all([
         supabase
           .from('invoices')
           .select('*, customer:customers(name, email, phone)')
           .order('created_at', { ascending: false }),
-        supabase.from('customers').select('*').eq('active', true),
-        supabase.from('whatsapp_connections').select('*').eq('status', 'connected').eq('is_active', true)
+        supabase.from('customers').select('*').eq('active', true)
       ])
 
       setInvoices(invoicesRes.data || [])
       setFilteredInvoices(invoicesRes.data || [])
       setCustomers(customersRes.data || [])
-      setWhatsappConnections(whatsappRes.data || [])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -164,8 +160,7 @@ function Invoices() {
     setSelectedInvoice(invoice)
     setSendOptions({
       sendEmail: true,
-      sendWhatsApp: false,
-      whatsappConnectionId: whatsappConnections[0]?.id || ''
+      sendWhatsApp: false
     })
     setShowSendModal(true)
   }
@@ -187,29 +182,32 @@ function Invoices() {
       }
 
       if (sendOptions.sendWhatsApp && selectedInvoice.customer.phone) {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-manager`
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/avisaapp-send`
         const message = `Olá ${selectedInvoice.customer.name}! Seu boleto no valor de R$ ${parseFloat(selectedInvoice.amount).toFixed(2)} está disponível. Vencimento: ${new Date(selectedInvoice.due_date).toLocaleDateString('pt-BR')}`
 
-        await fetch(apiUrl, {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            action: 'send',
-            connectionId: sendOptions.whatsappConnectionId,
             phone: selectedInvoice.customer.phone,
             message
           })
         })
+
+        const result = await response.json()
+
+        if (!result.success) {
+          throw new Error(result.error || 'Erro ao enviar mensagem pelo WhatsApp')
+        }
       }
 
       await supabase.from('sending_history').insert([{
         invoice_id: selectedInvoice.id,
         status: 'success',
-        send_type: sendType,
-        whatsapp_connection_id: sendOptions.sendWhatsApp ? sendOptions.whatsappConnectionId : null
+        send_type: sendType
       }])
 
       alert(`Boleto enviado com sucesso!`)
@@ -217,6 +215,14 @@ function Invoices() {
       loadData()
     } catch (error) {
       console.error('Erro ao enviar boleto:', error)
+
+      await supabase.from('sending_history').insert([{
+        invoice_id: selectedInvoice.id,
+        status: 'failed',
+        send_type: sendOptions.sendWhatsApp ? 'whatsapp' : 'email',
+        error_message: error.message
+      }])
+
       alert('Erro ao enviar boleto: ' + error.message)
     }
   }
@@ -588,33 +594,12 @@ exemplo@email.com,150.50,2025-01-15,1,2025,123456789,https://link-do-pdf.com`
                   type="checkbox"
                   checked={sendOptions.sendWhatsApp}
                   onChange={(e) => setSendOptions({...sendOptions, sendWhatsApp: e.target.checked})}
-                  disabled={!selectedInvoice.customer.phone || whatsappConnections.length === 0}
+                  disabled={!selectedInvoice.customer.phone}
                 />
-                Enviar por WhatsApp
+                Enviar por WhatsApp via AvisaApp
                 {selectedInvoice.customer.phone ? ` (${selectedInvoice.customer.phone})` : ' (sem telefone)'}
               </label>
-              {whatsappConnections.length === 0 && (
-                <small style={{color: '#e74c3c', marginLeft: '1.5rem', display: 'block'}}>
-                  Nenhuma conexão WhatsApp ativa disponível
-                </small>
-              )}
             </div>
-
-            {sendOptions.sendWhatsApp && whatsappConnections.length > 0 && (
-              <div className="form-group">
-                <label>Conexão WhatsApp</label>
-                <select
-                  value={sendOptions.whatsappConnectionId}
-                  onChange={(e) => setSendOptions({...sendOptions, whatsappConnectionId: e.target.value})}
-                >
-                  {whatsappConnections.map(conn => (
-                    <option key={conn.id} value={conn.id}>
-                      {conn.name} ({conn.phone_number})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeSendModal}>
