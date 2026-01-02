@@ -3,7 +3,8 @@ import Dashboard from './components/Dashboard'
 import Customers from './components/Customers'
 import Invoices from './components/Invoices'
 import WhatsApp from './components/WhatsApp'
-import { FileText, Users, LayoutDashboard, MessageCircle } from 'lucide-react'
+import BulkMessages from './components/BulkMessages'
+import { FileText, Users, LayoutDashboard, MessageCircle, Send } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -50,6 +51,13 @@ function App() {
             <MessageCircle size={20} />
             WhatsApp
           </button>
+          <button
+            className={`nav-button ${activeTab === 'bulk' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bulk')}
+          >
+            <Send size={20} />
+            Envio em Massa
+          </button>
         </nav>
 
         <main className="main-content">
@@ -57,6 +65,7 @@ function App() {
           {activeTab === 'customers' && <Customers />}
           {activeTab === 'invoices' && <Invoices />}
           {activeTab === 'whatsapp' && <WhatsApp />}
+          {activeTab === 'bulk' && <BulkMessages />}
         </main>
       </div>
     </div>
