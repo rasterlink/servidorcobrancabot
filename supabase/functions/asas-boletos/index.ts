@@ -138,14 +138,16 @@ Deno.serve(async (req: Request) => {
       }
 
       // Create payment (boleto) in Asas
-      // Add vehicle info to description if available
-      let fullDescription = boletoData.description;
-      if (boletoData.customer.contractNumber || boletoData.customer.vehiclePlate || boletoData.customer.vehicleChassis) {
-        const vehicleInfo = [];
-        if (boletoData.customer.contractNumber) vehicleInfo.push(`Contrato: ${boletoData.customer.contractNumber}`);
-        if (boletoData.customer.vehiclePlate) vehicleInfo.push(`Placa: ${boletoData.customer.vehiclePlate}`);
-        if (boletoData.customer.vehicleChassis) vehicleInfo.push(`Chassi: ${boletoData.customer.vehicleChassis}`);
-        fullDescription = `${boletoData.description} - ${vehicleInfo.join(' | ')}`;
+      // Build description with vehicle info
+      let fullDescription = `${boletoData.description} referente ao contrato rasterlink`;
+
+      const vehicleInfo = [];
+      if (boletoData.customer.contractNumber) vehicleInfo.push(`Contrato: ${boletoData.customer.contractNumber}`);
+      if (boletoData.customer.vehiclePlate) vehicleInfo.push(`Placa: ${boletoData.customer.vehiclePlate}`);
+      if (boletoData.customer.vehicleChassis) vehicleInfo.push(`Chassi: ${boletoData.customer.vehicleChassis}`);
+
+      if (vehicleInfo.length > 0) {
+        fullDescription = `${fullDescription} | ${vehicleInfo.join(' | ')}`;
       }
 
       const paymentPayload = {
