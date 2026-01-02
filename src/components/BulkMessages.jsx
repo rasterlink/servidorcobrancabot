@@ -35,7 +35,7 @@ export default function BulkMessages() {
     const { data, error } = await supabase
       .from('whatsapp_connections')
       .select('*')
-      .eq('status', 'connected')
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (!error && data) {
@@ -308,7 +308,7 @@ export default function BulkMessages() {
           >
             {connections.map(conn => (
               <option key={conn.id} value={conn.id}>
-                {conn.name} ({conn.phone_number})
+                {conn.name} {conn.phone_number ? `(${conn.phone_number})` : `- ${conn.status}`}
               </option>
             ))}
           </select>
