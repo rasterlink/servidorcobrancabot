@@ -43,7 +43,7 @@ function Invoices() {
       const [invoicesRes, customersRes] = await Promise.all([
         supabase
           .from('invoices')
-          .select('*, customer:customers(name, email, phone)')
+          .select('*, customer:customers(name, email, phone, pix_key)')
           .order('created_at', { ascending: false }),
         supabase.from('customers').select('*').eq('active', true)
       ])
@@ -183,7 +183,11 @@ function Invoices() {
 
       if (sendOptions.sendWhatsApp && selectedInvoice.customer.phone) {
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/avisaapp-send`
-        const message = `Olá ${selectedInvoice.customer.name}! Seu boleto no valor de R$ ${parseFloat(selectedInvoice.amount).toFixed(2)} está disponível. Vencimento: ${new Date(selectedInvoice.due_date).toLocaleDateString('pt-BR')}`
+        let message = `Olá ${selectedInvoice.customer.name}! Seu boleto no valor de R$ ${parseFloat(selectedInvoice.amount).toFixed(2)} está disponível. Vencimento: ${new Date(selectedInvoice.due_date).toLocaleDateString('pt-BR')}`
+
+        if (selectedInvoice.customer.pix_key) {
+          message += `\n\n💳 Chave PIX: ${selectedInvoice.customer.pix_key}`
+        }
 
         const response = await fetch(apiUrl, {
           method: 'POST',

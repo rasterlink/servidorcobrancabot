@@ -25,7 +25,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: invoices, error: fetchError } = await supabase
       .from('invoices')
-      .select('*, customer:customers(name, email, phone)')
+      .select('*, customer:customers(name, email, phone, pix_key)')
       .eq('status', 'pending')
       .eq('reference_month', currentMonth)
       .eq('reference_year', currentYear)
