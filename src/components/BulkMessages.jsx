@@ -141,27 +141,35 @@ export default function BulkMessages() {
 
     const records = uploadedData.map(data => ({
       connection_id: selectedConnection,
-      name: data.nome,
-      phone: data.phone,
-      contrato: data.contrato,
-      veiculo: data.veiculo,
-      placa: data.placa,
-      chassi: data.chassi,
-      valor: data.valor,
-      valor_total: data.valor_total,
-      valor_juros: data.valor_juros,
-      pix: data.pix,
+      name: data.nome || '',
+      phone: data.phone || '',
+      contrato: data.contrato || '',
+      veiculo: data.veiculo || '',
+      placa: data.placa || '',
+      chassi: data.chassi || '',
+      valor: data.valor || '',
+      valor_total: data.valor_total || '',
+      valor_juros: data.valor_juros || '',
+      pix: data.pix || pixKey || '',
       message: formatMessage(data),
       status: 'pending'
     }));
 
-    const { error } = await supabase
+    const invalidRecords = records.filter(r => !r.name || !r.phone || !r.message);
+    if (invalidRecords.length > 0) {
+      alert('Alguns registros estão sem nome, telefone ou mensagem. Verifique a planilha.');
+      console.error('Registros inválidos:', invalidRecords);
+      return;
+    }
+
+    const { data: insertedData, error } = await supabase
       .from('bulk_messages')
       .insert(records);
 
     if (error) {
-      alert('Erro ao salvar mensagens');
-      console.error(error);
+      alert(`Erro ao salvar mensagens: ${error.message}`);
+      console.error('Erro completo:', error);
+      console.error('Records tentados:', records);
       return;
     }
 
