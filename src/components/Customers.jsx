@@ -15,6 +15,7 @@ function Customers() {
     email: '',
     phone: '',
     cpf_cnpj: '',
+    pix_key: '',
     active: true
   })
 
@@ -60,6 +61,7 @@ function Customers() {
         email: '',
         phone: '',
         cpf_cnpj: '',
+        pix_key: '',
         active: true
       })
     }
@@ -74,6 +76,7 @@ function Customers() {
       email: '',
       phone: '',
       cpf_cnpj: '',
+      pix_key: '',
       active: true
     })
   }
@@ -90,6 +93,7 @@ function Customers() {
             email: formData.email,
             phone: formData.phone,
             cpf_cnpj: formData.cpf_cnpj,
+            pix_key: formData.pix_key,
             active: formData.active
           })
           .eq('id', formData.id)
@@ -103,6 +107,7 @@ function Customers() {
             email: formData.email,
             phone: formData.phone,
             cpf_cnpj: formData.cpf_cnpj,
+            pix_key: formData.pix_key,
             active: formData.active
           }])
 
@@ -174,6 +179,7 @@ function Customers() {
                 <th>Email</th>
                 <th>Telefone</th>
                 <th>CPF/CNPJ</th>
+                <th>Chave PIX</th>
                 <th>Status</th>
                 <th>Ações</th>
               </tr>
@@ -195,6 +201,7 @@ function Customers() {
                     </span>
                   </td>
                   <td>{customer.cpf_cnpj || '-'}</td>
+                  <td>{customer.pix_key || '-'}</td>
                   <td>
                     <span className={`status-badge ${customer.active ? 'active' : 'inactive'}`}>
                       {customer.active ? 'Ativo' : 'Inativo'}
@@ -265,6 +272,16 @@ function Customers() {
                   type="text"
                   value={formData.cpf_cnpj}
                   onChange={(e) => setFormData({...formData, cpf_cnpj: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Chave PIX</label>
+                <input
+                  type="text"
+                  placeholder="CPF, CNPJ, Email, Telefone ou Chave Aleatória"
+                  value={formData.pix_key}
+                  onChange={(e) => setFormData({...formData, pix_key: e.target.value})}
                 />
               </div>
 
