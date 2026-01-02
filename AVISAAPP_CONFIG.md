@@ -54,3 +54,36 @@ https://ntcvmemtpejyccatxudp.supabase.co/functions/v1/avisaapp-send
 ```
 
 Requer autenticação com o token do Supabase.
+
+## Detalhes Técnicos da Integração
+
+### API da AvisaApp (v2)
+- **Endpoint**: `https://www.avisaapp.com.br/api/v2/actions/sendMessage`
+- **Método**: POST
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer [TOKEN]`
+- **Body** (campos em português):
+  - `numero`: Número do telefone (apenas dígitos)
+  - `mensagem`: Texto da mensagem
+
+### Exemplo de Requisição
+```json
+{
+  "numero": "11987654321",
+  "mensagem": "Sua mensagem aqui"
+}
+```
+
+### Resposta de Sucesso
+```json
+{
+  "code": 200,
+  "data": {
+    "Details": "Sent",
+    "Id": "3EB0ED6DA975B496C1D71A",
+    "Timestamp": "2026-01-02T16:15:11.064936354Z"
+  },
+  "success": true
+}
+```

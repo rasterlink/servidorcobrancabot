@@ -33,14 +33,14 @@ Deno.serve(async (req: Request) => {
 
     const cleanPhone = phone.replace(/\D/g, '')
 
-    const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
+    const response = await fetch(`${avisaappApiUrl}/v2/actions/sendMessage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${avisaappToken}`,
       },
       body: JSON.stringify({
-        number: cleanPhone,
+        numero: cleanPhone,
         mensagem: message,
       }),
     })
