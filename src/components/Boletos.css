@@ -9,12 +9,24 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  gap: 1rem;
 }
 
 .boletos-header h1 {
   font-size: 2rem;
   font-weight: 600;
   color: #1a1a1a;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-actions label {
+  margin: 0;
 }
 
 .btn-primary {
@@ -310,6 +322,43 @@
   font-size: 0.9375rem;
 }
 
+.import-progress {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.import-progress h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 1rem;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+  transition: width 0.3s ease;
+  border-radius: 6px;
+}
+
+.import-progress p {
+  font-size: 0.9375rem;
+  color: #475569;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .boletos-container {
     padding: 1rem;
@@ -319,6 +368,16 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .header-actions button {
+    flex: 1;
+    min-width: 120px;
   }
 
   .boletos-table-wrapper {

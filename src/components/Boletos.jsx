@@ -9,6 +9,8 @@ export default function Boletos() {
   const [selectedCustomers, setSelectedCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
   const [formData, setFormData] = useState({
     value: '',
     dueDate: '',
@@ -184,19 +186,229 @@ export default function Boletos() {
     return labels[status] || status;
   };
 
+  const parseCSV = (text) => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const rows = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const row = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      rows.push(row);
+    }
+
+    return rows;
+  };
+
+  const handleCSVImport = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
+    setShowImport(true);
+
+    try {
+      const text = await file.text();
+      const rows = parseCSV(text);
+
+      if (rows.length === 0) {
+        alert('CSV vazio ou inválido');
+        setLoading(false);
+        return;
+      }
+
+      setImportProgress({ current: 0, total: rows.length });
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        setImportProgress({ current: i + 1, total: rows.length });
+
+        try {
+          const name = row.nome || row.name;
+          const cpfCnpj = row.cpf_cnpj || row.cpf || row.cnpj || row.documento;
+          const email = row.email;
+          const phone = row.telefone || row.phone || row.fone;
+          const value = parseFloat(row.valor || row.value || 0);
+          const dueDate = row.vencimento || row.due_date || row.data_vencimento;
+          const description = row.descricao || row.description || row.desc || 'Boleto';
+
+          if (!name || !cpfCnpj) {
+            errors.push(`Linha ${i + 2}: Nome ou CPF/CNPJ faltando`);
+            errorCount++;
+            continue;
+          }
+
+          if (!value || value <= 0) {
+            errors.push(`Linha ${i + 2}: Valor inválido`);
+            errorCount++;
+            continue;
+          }
+
+          if (!dueDate) {
+            errors.push(`Linha ${i + 2}: Data de vencimento faltando`);
+            errorCount++;
+            continue;
+          }
+
+          let customer = await supabase
+            .from('customers')
+            .select('*')
+            .eq('cpf_cnpj', cpfCnpj)
+            .maybeSingle();
+
+          if (!customer.data) {
+            const { data: newCustomer, error: createError } = await supabase
+              .from('customers')
+              .insert({
+                name,
+                cpf_cnpj: cpfCnpj,
+                email,
+                phone,
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              errors.push(`Linha ${i + 2}: Erro ao criar cliente - ${createError.message}`);
+              errorCount++;
+              continue;
+            }
+
+            customer = { data: newCustomer };
+          }
+
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              customer: {
+                id: customer.data.id,
+                name: customer.data.name,
+                cpfCnpj: customer.data.cpf_cnpj,
+                email: customer.data.email,
+                phone: customer.data.phone,
+              },
+              billingType: 'BOLETO',
+              value,
+              dueDate,
+              description,
+              externalReference: `CSV-${Date.now()}-${i}`,
+            }),
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            const errorData = await response.json();
+            errors.push(`Linha ${i + 2}: ${errorData.error || 'Erro ao criar boleto'}`);
+            errorCount++;
+          }
+        } catch (error) {
+          errors.push(`Linha ${i + 2}: ${error.message}`);
+          errorCount++;
+        }
+      }
+
+      let message = `Importação concluída!\n${successCount} boletos gerados com sucesso\n${errorCount} erros`;
+      if (errors.length > 0 && errors.length <= 10) {
+        message += '\n\nErros:\n' + errors.join('\n');
+      } else if (errors.length > 10) {
+        message += '\n\nPrimeiros 10 erros:\n' + errors.slice(0, 10).join('\n');
+      }
+
+      alert(message);
+
+      loadCustomers();
+      loadBoletos();
+      setShowImport(false);
+      setImportProgress({ current: 0, total: 0 });
+    } catch (error) {
+      alert('Erro ao processar CSV: ' + error.message);
+    } finally {
+      setLoading(false);
+      event.target.value = '';
+    }
+  };
+
+  const downloadCSVTemplate = () => {
+    const template = 'nome,cpf_cnpj,email,telefone,valor,vencimento,descricao\nJoão Silva,12345678900,joao@email.com,11999999999,100.00,2024-12-31,Mensalidade';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'modelo-importacao-boletos.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="boletos-container">
       <div className="boletos-header">
         <h1>Boletos Asas</h1>
-        <button
-          className="btn-primary"
-          onClick={() => setShowForm(!showForm)}
-          disabled={loading}
-        >
-          <DollarSign size={20} />
-          Gerar Boletos
-        </button>
+        <div className="header-actions">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleCSVImport}
+            style={{ display: 'none' }}
+            id="csv-upload"
+            disabled={loading}
+          />
+          <button
+            className="btn-secondary"
+            onClick={downloadCSVTemplate}
+            disabled={loading}
+          >
+            <Download size={20} />
+            Baixar Modelo CSV
+          </button>
+          <label htmlFor="csv-upload">
+            <button
+              className="btn-secondary"
+              onClick={() => document.getElementById('csv-upload').click()}
+              disabled={loading}
+              type="button"
+            >
+              <FileUp size={20} />
+              Importar CSV
+            </button>
+          </label>
+          <button
+            className="btn-primary"
+            onClick={() => setShowForm(!showForm)}
+            disabled={loading}
+          >
+            <DollarSign size={20} />
+            Gerar Boletos
+          </button>
+        </div>
       </div>
+
+      {showImport && (
+        <div className="import-progress">
+          <h3>Importando CSV...</h3>
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+            ></div>
+          </div>
+          <p>{importProgress.current} de {importProgress.total} processados</p>
+        </div>
+      )}
 
       {showForm && (
         <div className="boletos-form-section">
