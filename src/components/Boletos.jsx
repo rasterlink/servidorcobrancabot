@@ -186,19 +186,31 @@ export default function Boletos() {
     return labels[status] || status;
   };
 
+  const normalizeHeader = (header) => {
+    return header
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  };
+
   const parseCSV = (text) => {
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
 
     const separator = lines[0].includes(';') ? ';' : ',';
-    const headers = lines[0].split(separator).map(h => h.trim().toLowerCase());
+    const rawHeaders = lines[0].split(separator);
+    const headers = rawHeaders.map(h => normalizeHeader(h));
     const rows = [];
 
+    console.log('Headers detectados:', headers);
+
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(separator).map(v => v.trim());
+      const values = lines[i].split(separator);
       const row = {};
       headers.forEach((header, index) => {
-        row[header] = values[index] || '';
+        row[header] = values[index] ? values[index].trim() : '';
       });
       rows.push(row);
     }
@@ -223,6 +235,9 @@ export default function Boletos() {
         return;
       }
 
+      console.log('Total de linhas para importar:', rows.length);
+      console.log('Primeira linha de exemplo:', rows[0]);
+
       setImportProgress({ current: 0, total: rows.length });
 
       let successCount = 0;
@@ -234,8 +249,10 @@ export default function Boletos() {
         setImportProgress({ current: i + 1, total: rows.length });
 
         try {
-          const name = row['nome/razão social'] || row.nome || row.name || row['nome'];
-          const cpfCnpj = (row['cnpj/cpf'] || row.cpf_cnpj || row.cpf || row.cnpj || row.documento || '').replace(/[.\-/]/g, '');
+          const name = row['nome/razao social'] || row.nome || row.name || '';
+          let cpfCnpj = row['cnpj/cpf'] || row.cpf_cnpj || row.cpf || row.cnpj || row.documento || '';
+          cpfCnpj = cpfCnpj.replace(/[.\-/\s]/g, '');
+
           const email = row.email || '';
           const phone = row['telefone celular'] || row.telefone || row.phone || row.fone || '';
 
@@ -244,17 +261,29 @@ export default function Boletos() {
           const value = parseFloat(valueStr);
 
           let dueDate = row.vencimento || row.due_date || row.data_vencimento || '';
+          dueDate = dueDate.trim();
           if (dueDate && dueDate.includes('/')) {
             const parts = dueDate.split('/');
             if (parts.length === 3) {
-              dueDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              const day = parts[0].padStart(2, '0');
+              const month = parts[1].padStart(2, '0');
+              const year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+              dueDate = `${year}-${month}-${day}`;
             }
           }
 
           const description = row.descricao || row.description || row.desc || 'Mensalidade de rastreamento';
 
-          if (!name || !cpfCnpj) {
-            errors.push(`Linha ${i + 2}: Nome ou CPF/CNPJ faltando`);
+          console.log(`Linha ${i + 2}:`, { name, cpfCnpj, value, dueDate });
+
+          if (!name || name.length < 2) {
+            errors.push(`Linha ${i + 2}: Nome inválido ou faltando`);
+            errorCount++;
+            continue;
+          }
+
+          if (!cpfCnpj || cpfCnpj.length < 11) {
+            errors.push(`Linha ${i + 2}: CPF/CNPJ inválido ou faltando (${cpfCnpj})`);
             errorCount++;
             continue;
           }
@@ -265,8 +294,8 @@ export default function Boletos() {
             continue;
           }
 
-          if (!dueDate) {
-            errors.push(`Linha ${i + 2}: Data de vencimento faltando`);
+          if (!dueDate || dueDate.length < 8) {
+            errors.push(`Linha ${i + 2}: Data de vencimento inválida (${dueDate})`);
             errorCount++;
             continue;
           }
