@@ -102,11 +102,13 @@ O Railway detectará automaticamente:
 
 ### Erro: "Falha ao ler o diretório de origem"
 
-**Causa**: Arquivo `.npmrc` com configurações locais incorretas
+**Causa**: Arquivo `.npmrc` com configurações locais (registry localhost) que não funcionam no Railway
 
 **Solução**:
-- O arquivo `.npmrc` é automaticamente removido durante o build pelo comando `rm -f .npmrc` no `nixpacks.toml`
-- Certifique-se de que o `.npmrc` está listado no `.gitignore`
+- O arquivo `.npmrc` foi REMOVIDO do projeto
+- Ele está listado no `.gitignore` para não ser adicionado acidentalmente
+- O `nixpacks.toml` remove qualquer `.npmrc` automaticamente como medida de segurança
+- Se você usar configurações npm específicas, use variáveis de ambiente ao invés de `.npmrc`
 
 ### Erro: "Module not found"
 
