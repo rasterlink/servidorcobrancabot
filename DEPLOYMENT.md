@@ -101,32 +101,47 @@ O Railway detectará automaticamente:
 
 ## Problemas Comuns
 
-### Erro: "Falha ao ler o diretório de origem"
+### Erro: "Falha ao ler o diretório de origem" / "Failed to read application source directory"
 
-**Causa**: Arquivo `.npmrc` com configurações locais (registry localhost) que não funcionam no Railway
+**Causa**: Arquivo `.npmrc` com configurações locais que não funcionam no Railway. O arquivo contém:
+```
+registry=http://localhost:9092/npm-registry
+https-proxy=http://localhost:9091
+strict-ssl=false
+```
 
-**Correções Aplicadas**:
-1. Arquivo `.npmrc` REMOVIDO completamente do projeto
-2. Adicionado `.npmrc` ao `.gitignore`
-3. O `nixpacks.toml` remove automaticamente qualquer `.npmrc` durante o build
-4. `railway.json` simplificado (sem duplicação de comandos)
-5. Porta do Vite corrigida com `parseInt(process.env.PORT)` no `vite.config.js`
+Essas configurações tentam usar um registry npm local (localhost:9092) que não existe no servidor do Railway.
 
-**Se o erro persistir no Railway**:
+**SOLUÇÃO CRÍTICA - Siga estes passos EXATAMENTE**:
+
 ```bash
-# 1. Verifique se há .npmrc no git
+# 1. REMOVA o .npmrc do projeto (se existir)
+rm -f .npmrc
+
+# 2. Verifique se o .npmrc está no gitignore
+cat .gitignore | grep npmrc
+# Se não aparecer, adicione manualmente
+
+# 3. REMOVA o .npmrc do git (se foi commitado antes)
+git rm -f .npmrc 2>/dev/null || true
+
+# 4. Verifique que o arquivo NÃO está mais trackado
 git ls-files | grep npmrc
+# Não deve retornar nada
 
-# 2. Se existir, remova:
-git rm -f .npmrc
-
-# 3. Commit as mudanças
-git add .
-git commit -m "fix: remove .npmrc e corrige configuracao"
+# 5. Commit e push
+git add .gitignore
+git commit -m "fix: remove .npmrc permanentemente"
 git push
 
-# 4. Force um novo deploy no Railway
+# 6. No Railway, force um novo deploy
+# O Railway vai detectar o push automaticamente
 ```
+
+**IMPORTANTE**:
+- O `.npmrc` está agora no `.gitignore` para nunca mais ser commitado
+- O `nixpacks.toml` remove automaticamente qualquer `.npmrc` como proteção extra
+- Se você precisa configurar registries npm, use variáveis de ambiente no Railway ao invés de `.npmrc`
 
 ### Erro: "Module not found"
 
