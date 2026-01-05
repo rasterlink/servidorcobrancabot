@@ -5,7 +5,8 @@ import Invoices from './components/Invoices'
 import WhatsApp from './components/WhatsApp'
 import BulkMessages from './components/BulkMessages'
 import Boletos from './components/Boletos'
-import { FileText, Users, LayoutDashboard, MessageCircle, Send, DollarSign } from 'lucide-react'
+import ImportCustomers from './components/ImportCustomers'
+import { FileText, Users, LayoutDashboard, MessageCircle, Send, DollarSign, Upload } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -66,6 +67,13 @@ function App() {
             <DollarSign size={20} />
             Boletos Asas
           </button>
+          <button
+            className={`nav-button ${activeTab === 'import' ? 'active' : ''}`}
+            onClick={() => setActiveTab('import')}
+          >
+            <Upload size={20} />
+            Importar Clientes
+          </button>
         </nav>
 
         <main className="main-content">
@@ -75,6 +83,7 @@ function App() {
           {activeTab === 'whatsapp' && <WhatsApp />}
           {activeTab === 'bulk' && <BulkMessages />}
           {activeTab === 'boletos' && <Boletos />}
+          {activeTab === 'import' && <ImportCustomers />}
         </main>
       </div>
     </div>
