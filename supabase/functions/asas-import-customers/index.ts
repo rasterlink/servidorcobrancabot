@@ -143,6 +143,10 @@ async function createPayments(
   customerId: string,
   customer: Customer
 ) {
+  console.log(`Criando pagamentos para ${customer.name}:`);
+  console.log(`  Quantidade de parcelas: ${customer.installments_count}`);
+  console.log(`  Valor da parcela: ${customer.installment_value}`);
+
   const dueDateParts = customer.due_date.split("/");
   let dueDate = new Date();
 

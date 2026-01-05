@@ -39,6 +39,19 @@ export default function ImportCustomers() {
       }
 
       const proposalNumber = customer['Proposta'] || '';
+
+      // Parse installments count com limpeza completa
+      const installmentsRaw = customer['quantidade de parcela'] || customer['quantidade de parcelas'] || '0';
+      const installmentsCount = parseInt(installmentsRaw.trim().replace(/\s+/g, '')) || 0;
+
+      // Parse installment value com limpeza completa
+      const valueRaw = customer['Valor da Parcela'] || '0';
+      const installmentValue = parseFloat(valueRaw.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+
+      console.log(`Cliente: ${customer['Nome/Razão Social']}`);
+      console.log(`  Quantidade de parcelas: "${installmentsRaw}" -> ${installmentsCount}`);
+      console.log(`  Valor da parcela: "${valueRaw}" -> ${installmentValue}`);
+
       customers.push({
         cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
         name: customer['Nome/Razão Social'],
@@ -50,9 +63,9 @@ export default function ImportCustomers() {
         vehicle_chassi: customer['Chassi'] || '',
         vehicle_brand: customer['Marca'] || '',
         vehicle_model: customer['Modelo'] || '',
-        installment_value: parseFloat(customer['Valor da Parcela']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+        installment_value: installmentValue,
         total_value: parseFloat(customer['valor total']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-        installments_count: parseInt(customer['quantidade de parcela']?.trim()) || parseInt(customer['quantidade de parcelas']) || 0,
+        installments_count: installmentsCount,
         due_date: customer['Vencimento'] || customer['Vencimento da primeira'] || '',
         description: customer['descricao'] || ''
       });
