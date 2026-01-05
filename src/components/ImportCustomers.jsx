@@ -27,17 +27,19 @@ export default function ImportCustomers() {
         customers.push({
           cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
           name: customer['Nome/Razão Social'],
+          email: customer['email'] || '',
           phone: customer['Telefone Celular']?.replace(/\D/g, '') || '',
           proposal_number: proposalNumber,
-          contract_number: customer['Contrato'] || proposalNumber,
+          contract_number: proposalNumber,
           vehicle_plate: customer['Placa'] || '',
           vehicle_chassi: customer['Chassi'] || '',
           vehicle_brand: customer['Marca'] || '',
           vehicle_model: customer['Modelo'] || '',
-          installment_value: parseFloat(customer['VALOR DA PARCELA']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-          total_value: parseFloat(customer['VALOR TOTAL']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-          installments_count: parseInt(customer['QUANTIDADE DE PARCELA']) || 0,
-          due_date: customer['Vencimento'] || ''
+          installment_value: parseFloat(customer['Valor da Parcela']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+          total_value: parseFloat(customer['valor total']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+          installments_count: parseInt(customer['quantidade de parcelas']) || 0,
+          due_date: customer['Vencimento da primeira'] || '',
+          description: customer['descricao'] || ''
         });
       }
     }
@@ -156,7 +158,7 @@ export default function ImportCustomers() {
         <h3>Instruções</h3>
         <ol>
           <li>Exporte a planilha de clientes em formato CSV</li>
-          <li>Certifique-se de que contém as colunas: Proposta, CNPJ/CPF, Nome/Razão Social, Placa, Chassi, Marca, Modelo, Vencimento, Valor da Parcela, Valor Total e Quantidade de Parcelas</li>
+          <li>Certifique-se de que contém as colunas: Nome/Razão Social, CNPJ/CPF, email, Telefone Celular, Proposta, Placa, Chassi, Marca, Modelo, Valor da Parcela, valor total, quantidade de parcelas, Vencimento da primeira e descricao</li>
           <li>Clique em "Selecionar Arquivo" e escolha o arquivo CSV</li>
           <li>Aguarde o processamento - os clientes serão cadastrados no Asas automaticamente</li>
           <li>A observação incluirá: número do contrato, proposta, placa, chassi, marca e modelo do veículo</li>

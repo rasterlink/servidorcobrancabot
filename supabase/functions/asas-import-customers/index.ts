@@ -9,6 +9,7 @@ const corsHeaders = {
 interface Customer {
   cpf_cnpj: string;
   name: string;
+  email: string;
   phone: string;
   proposal_number: string;
   contract_number: string;
@@ -20,6 +21,7 @@ interface Customer {
   total_value: number;
   installments_count: number;
   due_date: string;
+  description: string;
 }
 
 Deno.serve(async (req: Request) => {
@@ -59,6 +61,7 @@ Deno.serve(async (req: Request) => {
         const customerData = {
           name: customer.name,
           cpfCnpj: customer.cpf_cnpj,
+          email: customer.email || undefined,
           phone: customer.phone,
           observations: `Contrato: ${customer.contract_number}\nProposta: ${customer.proposal_number}\nPlaca: ${customer.vehicle_plate}\nChassi: ${customer.vehicle_chassi}\nMarca: ${customer.vehicle_brand}\nModelo: ${customer.vehicle_model}`,
         };
@@ -160,7 +163,7 @@ async function createPayments(
       billingType: "BOLETO",
       value: customer.installment_value,
       dueDate: installmentDate.toISOString().split("T")[0],
-      description: `Parcela ${i + 1}/${customer.installments_count} - Proposta ${customer.proposal_number}`,
+      description: customer.description || `Parcela ${i + 1}/${customer.installments_count} - Proposta ${customer.proposal_number}`,
       externalReference: customer.proposal_number,
     };
 
