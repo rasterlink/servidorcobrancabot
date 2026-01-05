@@ -36,6 +36,8 @@ interface CreateBoletoRequest {
   dueDate: string;
   description: string;
   externalReference?: string;
+  installmentCount?: number;
+  installmentNumber?: number;
 }
 
 Deno.serve(async (req: Request) => {
@@ -181,6 +183,8 @@ Deno.serve(async (req: Request) => {
           status: "error",
           error_message: asasPayment.errors?.[0]?.description || "Failed to create payment",
           external_reference: boletoData.externalReference,
+          installment_count: boletoData.installmentCount || 1,
+          installment_number: boletoData.installmentNumber || 1,
         });
 
         throw new Error(asasPayment.errors?.[0]?.description || "Failed to create payment in Asas");
@@ -202,6 +206,8 @@ Deno.serve(async (req: Request) => {
           nosso_numero: asasPayment.nossoNumero,
           invoice_url: asasPayment.invoiceUrl,
           external_reference: boletoData.externalReference,
+          installment_count: boletoData.installmentCount || 1,
+          installment_number: boletoData.installmentNumber || 1,
         })
         .select()
         .single();

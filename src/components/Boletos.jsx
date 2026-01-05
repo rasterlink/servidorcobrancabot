@@ -15,6 +15,7 @@ export default function Boletos() {
     value: '',
     dueDate: '',
     description: '',
+    installments: 1,
   });
 
   useEffect(() => {
@@ -87,46 +88,59 @@ export default function Boletos() {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
       let successCount = 0;
       let errorCount = 0;
+      const installments = formData.installments || 1;
 
       for (const customerId of selectedCustomers) {
         const customer = customers.find(c => c.id === customerId);
 
         if (!customer) continue;
 
-        try {
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              customer: {
-                id: customer.id,
-                name: customer.name,
-                cpfCnpj: customer.cpf_cnpj,
-                email: customer.email,
-                phone: customer.phone,
-                contractNumber: customer.contract_number,
-                vehiclePlate: customer.vehicle_plate,
-                vehicleChassis: customer.vehicle_chassis,
-              },
-              billingType: 'BOLETO',
-              value: parseFloat(formData.value),
-              dueDate: formData.dueDate,
-              description: formData.description,
-              externalReference: `INV-${Date.now()}`,
-            }),
-          });
+        for (let installment = 1; installment <= installments; installment++) {
+          try {
+            const installmentDate = new Date(formData.dueDate);
+            installmentDate.setMonth(installmentDate.getMonth() + (installment - 1));
+            const dueDate = installmentDate.toISOString().split('T')[0];
 
-          if (response.ok) {
-            successCount++;
-          } else {
+            const description = installments > 1
+              ? `${formData.description} (${installment}/${installments})`
+              : formData.description;
+
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                customer: {
+                  id: customer.id,
+                  name: customer.name,
+                  cpfCnpj: customer.cpf_cnpj,
+                  email: customer.email,
+                  phone: customer.phone,
+                  contractNumber: customer.contract_number,
+                  vehiclePlate: customer.vehicle_plate,
+                  vehicleChassis: customer.vehicle_chassis,
+                },
+                billingType: 'BOLETO',
+                value: parseFloat(formData.value),
+                dueDate,
+                description,
+                externalReference: `INV-${Date.now()}-${installment}`,
+                installmentCount: installments,
+                installmentNumber: installment,
+              }),
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
             errorCount++;
+            console.error(`Error creating boleto for ${customer.name} installment ${installment}:`, error);
           }
-        } catch (error) {
-          errorCount++;
-          console.error(`Error creating boleto for ${customer.name}:`, error);
         }
       }
 
@@ -134,7 +148,7 @@ export default function Boletos() {
 
       setSelectedCustomers([]);
       setShowForm(false);
-      setFormData({ value: '', dueDate: '', description: '' });
+      setFormData({ value: '', dueDate: '', description: '', installments: 1 });
       loadBoletos();
     } catch (error) {
       alert('Erro ao gerar boletos: ' + error.message);
@@ -483,12 +497,29 @@ export default function Boletos() {
           </div>
 
           <div className="form-group">
-            <label>Data de Vencimento</label>
+            <label>Data de Vencimento (primeira parcela)</label>
             <input
               type="date"
               value={formData.dueDate}
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
             />
+          </div>
+
+          <div className="form-group">
+            <label>Quantidade de Parcelas</label>
+            <input
+              type="number"
+              min="1"
+              max="12"
+              value={formData.installments}
+              onChange={(e) => setFormData({ ...formData, installments: parseInt(e.target.value) || 1 })}
+              placeholder="1"
+            />
+            {formData.installments > 1 && (
+              <small className="form-hint">
+                Serão gerados {formData.installments} boletos mensais por cliente
+              </small>
+            )}
           </div>
 
           <div className="form-group">
