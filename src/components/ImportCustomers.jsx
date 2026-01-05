@@ -9,39 +9,53 @@ export default function ImportCustomers() {
   const [error, setError] = useState('');
 
   const parseCSV = (text) => {
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split('\n');
     const headers = lines[0].split(';').map(h => h.trim());
     const customers = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(';');
-      if (values.length < headers.length || !values[1]?.trim()) continue;
+      const line = lines[i].trim();
+
+      // Ignora linhas completamente vazias
+      if (!line) continue;
+
+      const values = line.split(';');
+
+      // Ignora linhas com poucos valores
+      if (values.length < 3) continue;
 
       const customer = {};
       headers.forEach((header, index) => {
         customer[header] = values[index]?.trim() || '';
       });
 
-      if (customer['CNPJ/CPF'] && customer['Nome/Razão Social']) {
-        const proposalNumber = customer['Proposta'] || '';
-        customers.push({
-          cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
-          name: customer['Nome/Razão Social'],
-          email: customer['email'] || '',
-          phone: customer['Telefone Celular']?.replace(/\D/g, '') || '',
-          proposal_number: proposalNumber,
-          contract_number: proposalNumber,
-          vehicle_plate: customer['Placa'] || '',
-          vehicle_chassi: customer['Chassi'] || '',
-          vehicle_brand: customer['Marca'] || '',
-          vehicle_model: customer['Modelo'] || '',
-          installment_value: parseFloat(customer['Valor da Parcela']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-          total_value: parseFloat(customer['valor total']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
-          installments_count: parseInt(customer['quantidade de parcelas']) || 0,
-          due_date: customer['Vencimento da primeira'] || '',
-          description: customer['descricao'] || ''
-        });
+      // Verifica se tem nome E CNPJ/CPF (campos obrigatórios)
+      const hasName = customer['Nome/Razão Social']?.trim().length > 0;
+      const hasCpfCnpj = customer['CNPJ/CPF']?.trim().length > 0;
+
+      if (!hasName || !hasCpfCnpj) {
+        console.log(`Linha ${i + 1} ignorada - Nome: "${customer['Nome/Razão Social']}", CPF/CNPJ: "${customer['CNPJ/CPF']}"`);
+        continue;
       }
+
+      const proposalNumber = customer['Proposta'] || '';
+      customers.push({
+        cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
+        name: customer['Nome/Razão Social'],
+        email: customer['email'] || '',
+        phone: customer['Telefone Celular']?.replace(/\D/g, '') || '',
+        proposal_number: proposalNumber,
+        contract_number: proposalNumber,
+        vehicle_plate: customer['Placa'] || '',
+        vehicle_chassi: customer['Chassi'] || '',
+        vehicle_brand: customer['Marca'] || '',
+        vehicle_model: customer['Modelo'] || '',
+        installment_value: parseFloat(customer['Valor da Parcela']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+        total_value: parseFloat(customer['valor total']?.replace(/[^\d,]/g, '').replace(',', '.')) || 0,
+        installments_count: parseInt(customer['quantidade de parcela']?.trim()) || parseInt(customer['quantidade de parcelas']) || 0,
+        due_date: customer['Vencimento'] || customer['Vencimento da primeira'] || '',
+        description: customer['descricao'] || ''
+      });
     }
 
     return customers;
@@ -157,8 +171,9 @@ export default function ImportCustomers() {
       <div className="import-instructions">
         <h3>Instruções</h3>
         <ol>
-          <li>Exporte a planilha de clientes em formato CSV</li>
-          <li>Certifique-se de que contém as colunas: Nome/Razão Social, CNPJ/CPF, email, Telefone Celular, Proposta, Placa, Chassi, Marca, Modelo, Valor da Parcela, valor total, quantidade de parcelas, Vencimento da primeira e descricao</li>
+          <li>Exporte a planilha de clientes em formato CSV com separador ponto-e-vírgula (;)</li>
+          <li>Certifique-se de que contém as colunas: Nome/Razão Social, CNPJ/CPF, email, Telefone Celular, Proposta, Placa, Chassi, Marca, Modelo, Valor da Parcela, quantidade de parcela, Vencimento e descricao</li>
+          <li>Remova linhas vazias do arquivo antes de importar</li>
           <li>Clique em "Selecionar Arquivo" e escolha o arquivo CSV</li>
           <li>Aguarde o processamento - os clientes serão cadastrados no Asas automaticamente</li>
           <li>A observação incluirá: número do contrato, proposta, placa, chassi, marca e modelo do veículo</li>
