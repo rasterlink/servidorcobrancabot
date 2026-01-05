@@ -11,6 +11,7 @@ interface Customer {
   name: string;
   phone: string;
   proposal_number: string;
+  contract_number: string;
   vehicle_plate: string;
   vehicle_chassi: string;
   vehicle_brand: string;
@@ -59,7 +60,7 @@ Deno.serve(async (req: Request) => {
           name: customer.name,
           cpfCnpj: customer.cpf_cnpj,
           phone: customer.phone,
-          observations: `Proposta: ${customer.proposal_number}\nPlaca: ${customer.vehicle_plate}\nChassi: ${customer.vehicle_chassi}\nMarca: ${customer.vehicle_brand}\nModelo: ${customer.vehicle_model}`,
+          observations: `Contrato: ${customer.contract_number}\nProposta: ${customer.proposal_number}\nPlaca: ${customer.vehicle_plate}\nChassi: ${customer.vehicle_chassi}\nMarca: ${customer.vehicle_brand}\nModelo: ${customer.vehicle_model}`,
         };
 
         const customerResponse = await fetch(`${ASAS_API_URL}/v3/customers`, {

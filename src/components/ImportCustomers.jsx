@@ -23,11 +23,13 @@ export default function ImportCustomers() {
       });
 
       if (customer['CNPJ/CPF'] && customer['Nome/Razão Social']) {
+        const proposalNumber = customer['Proposta'] || '';
         customers.push({
           cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
           name: customer['Nome/Razão Social'],
           phone: customer['Telefone Celular']?.replace(/\D/g, '') || '',
-          proposal_number: customer['Proposta'] || '',
+          proposal_number: proposalNumber,
+          contract_number: customer['Contrato'] || proposalNumber,
           vehicle_plate: customer['Placa'] || '',
           vehicle_chassi: customer['Chassi'] || '',
           vehicle_brand: customer['Marca'] || '',
@@ -157,7 +159,7 @@ export default function ImportCustomers() {
           <li>Certifique-se de que contém as colunas: Proposta, CNPJ/CPF, Nome/Razão Social, Placa, Chassi, Marca, Modelo, Vencimento, Valor da Parcela, Valor Total e Quantidade de Parcelas</li>
           <li>Clique em "Selecionar Arquivo" e escolha o arquivo CSV</li>
           <li>Aguarde o processamento - os clientes serão cadastrados no Asas automaticamente</li>
-          <li>A observação incluirá: número da proposta, placa, chassi, marca e modelo do veículo</li>
+          <li>A observação incluirá: número do contrato, proposta, placa, chassi, marca e modelo do veículo</li>
         </ol>
       </div>
     </div>
