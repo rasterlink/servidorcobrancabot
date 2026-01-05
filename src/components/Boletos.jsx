@@ -82,6 +82,9 @@ export default function Boletos() {
       return;
     }
 
+    console.log('DEBUG - formData completo:', formData);
+    console.log('DEBUG - formData.installments:', formData.installments, 'tipo:', typeof formData.installments);
+
     setLoading(true);
 
     try {
@@ -91,6 +94,7 @@ export default function Boletos() {
       const errors = [];
       const installments = parseInt(formData.installments) || 1;
 
+      console.log('DEBUG - installments após parseInt:', installments);
       console.log('Gerando boletos:', {
         clientes: selectedCustomers.length,
         parcelas: installments,
