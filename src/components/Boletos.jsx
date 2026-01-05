@@ -88,7 +88,14 @@ export default function Boletos() {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
       let successCount = 0;
       let errorCount = 0;
-      const installments = formData.installments || 1;
+      const errors = [];
+      const installments = parseInt(formData.installments) || 1;
+
+      console.log('Gerando boletos:', {
+        clientes: selectedCustomers.length,
+        parcelas: installments,
+        total: selectedCustomers.length * installments
+      });
 
       for (const customerId of selectedCustomers) {
         const customer = customers.find(c => c.id === customerId);
@@ -104,6 +111,8 @@ export default function Boletos() {
             const description = installments > 1
               ? `${formData.description} (${installment}/${installments})`
               : formData.description;
+
+            console.log(`Criando parcela ${installment}/${installments} para ${customer.name} - Vencimento: ${dueDate}`);
 
             const response = await fetch(apiUrl, {
               method: 'POST',
@@ -134,23 +143,39 @@ export default function Boletos() {
 
             if (response.ok) {
               successCount++;
+              console.log(`✓ Parcela ${installment}/${installments} criada para ${customer.name}`);
             } else {
+              const errorData = await response.json();
               errorCount++;
+              const errorMsg = `${customer.name} - Parcela ${installment}: ${errorData.error || 'Erro desconhecido'}`;
+              errors.push(errorMsg);
+              console.error(errorMsg);
             }
           } catch (error) {
             errorCount++;
-            console.error(`Error creating boleto for ${customer.name} installment ${installment}:`, error);
+            const errorMsg = `${customer.name} - Parcela ${installment}: ${error.message}`;
+            errors.push(errorMsg);
+            console.error(errorMsg, error);
           }
         }
       }
 
-      alert(`Boletos gerados: ${successCount} sucesso, ${errorCount} erros`);
+      let message = `Boletos gerados!\n✓ ${successCount} boletos criados com sucesso\n✗ ${errorCount} erros`;
+
+      if (errors.length > 0) {
+        message += '\n\n' + (errors.length > 5
+          ? 'Primeiros 5 erros:\n' + errors.slice(0, 5).join('\n')
+          : 'Erros:\n' + errors.join('\n'));
+      }
+
+      alert(message);
 
       setSelectedCustomers([]);
       setShowForm(false);
       setFormData({ value: '', dueDate: '', description: '', installments: 1 });
       loadBoletos();
     } catch (error) {
+      console.error('Erro ao gerar boletos:', error);
       alert('Erro ao gerar boletos: ' + error.message);
     } finally {
       setLoading(false);
@@ -580,7 +605,7 @@ export default function Boletos() {
               onClick={handleGenerateBoletos}
               disabled={loading || selectedCustomers.length === 0}
             >
-              {loading ? 'Gerando...' : `Gerar ${selectedCustomers.length} Boleto(s)`}
+              {loading ? 'Gerando...' : `Gerar ${selectedCustomers.length * (formData.installments || 1)} Boleto(s)`}
             </button>
           </div>
         </div>
@@ -606,6 +631,7 @@ export default function Boletos() {
                 <th>Contrato/Veículo</th>
                 <th>Valor</th>
                 <th>Vencimento</th>
+                <th>Parcela</th>
                 <th>Descrição</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -647,6 +673,9 @@ export default function Boletos() {
                       {new Date(boleto.due_date).toLocaleDateString('pt-BR')}
                     </div>
                   </td>
+                  <td>
+                    <strong>{boleto.installment_number || 1}/{boleto.installment_count || 1}</strong>
+                  </td>
                   <td>{boleto.description}</td>
                   <td>
                     <div className="status-cell">
@@ -682,7 +711,7 @@ export default function Boletos() {
               ))}
               {boletos.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="empty-state">
+                  <td colSpan="8" className="empty-state">
                     Nenhum boleto gerado ainda
                   </td>
                 </tr>
