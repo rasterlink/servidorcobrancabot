@@ -32,8 +32,7 @@ cmd = 'npm start'
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "npm install && npm run build"
+    "builder": "NIXPACKS"
   },
   "deploy": {
     "startCommand": "npm start",
@@ -42,6 +41,8 @@ cmd = 'npm start'
   }
 }
 ```
+
+**Nota**: Os comandos de build são definidos no `nixpacks.toml` para evitar duplicação.
 
 #### 3. .gitignore
 ```
@@ -104,11 +105,28 @@ O Railway detectará automaticamente:
 
 **Causa**: Arquivo `.npmrc` com configurações locais (registry localhost) que não funcionam no Railway
 
-**Solução**:
-- O arquivo `.npmrc` foi REMOVIDO do projeto
-- Ele está listado no `.gitignore` para não ser adicionado acidentalmente
-- O `nixpacks.toml` remove qualquer `.npmrc` automaticamente como medida de segurança
-- Se você usar configurações npm específicas, use variáveis de ambiente ao invés de `.npmrc`
+**Correções Aplicadas**:
+1. Arquivo `.npmrc` REMOVIDO completamente do projeto
+2. Adicionado `.npmrc` ao `.gitignore`
+3. O `nixpacks.toml` remove automaticamente qualquer `.npmrc` durante o build
+4. `railway.json` simplificado (sem duplicação de comandos)
+5. Porta do Vite corrigida com `parseInt(process.env.PORT)` no `vite.config.js`
+
+**Se o erro persistir no Railway**:
+```bash
+# 1. Verifique se há .npmrc no git
+git ls-files | grep npmrc
+
+# 2. Se existir, remova:
+git rm -f .npmrc
+
+# 3. Commit as mudanças
+git add .
+git commit -m "fix: remove .npmrc e corrige configuracao"
+git push
+
+# 4. Force um novo deploy no Railway
+```
 
 ### Erro: "Module not found"
 
