@@ -295,24 +295,40 @@ export default function Boletos() {
         setImportProgress({ current: i + 1, total: rows.length });
 
         try {
-          const name = row['nome/razao social'] || row.nome || row.name || '';
-          let cpfCnpj = row['cnpj/cpf'] || row.cpf_cnpj || row.cpf || row.cnpj || row.documento || '';
+          // Detecta nome com múltiplas variações
+          const name = (
+            row['nome/razao social'] ||
+            row['nome'] ||
+            row['name'] ||
+            row['razao social'] ||
+            row['cliente'] ||
+            ''
+          ).trim();
+
+          let cpfCnpj = (
+            row['cnpj/cpf'] ||
+            row['cpf/cnpj'] ||
+            row['cpf_cnpj'] ||
+            row['cpf'] ||
+            row['cnpj'] ||
+            row['documento'] ||
+            ''
+          ).trim();
           cpfCnpj = cpfCnpj.replace(/[.\-/\s]/g, '');
 
-          const email = row.email || '';
-          const phone = row['telefone celular'] || row.telefone || row.phone || row.fone || '';
-          const contractNumber = row.proposta || row['numero do contrato'] || row.contrato || '';
-          const vehiclePlate = row.placa || row.plate || '';
-          const vehicleChassis = row.chassi || row.chassis || '';
-          const vehicleBrand = row.marca || row.brand || '';
-          const vehicleModel = row.modelo || row.model || '';
+          const email = row['email'] || '';
+          const phone = (row['telefone celular'] || row['telefone'] || row['phone'] || row['fone'] || '').trim();
+          const contractNumber = (row['proposta'] || row['numero do contrato'] || row['contrato'] || '').trim();
+          const vehiclePlate = (row['placa'] || row['plate'] || '').trim();
+          const vehicleChassis = (row['chassi'] || row['chassis'] || '').trim();
+          const vehicleBrand = (row['marca'] || row['brand'] || '').trim();
+          const vehicleModel = (row['modelo'] || row['model'] || '').trim();
 
-          let valueStr = row['valor da parcela'] || row.valor || row.value || '0';
+          let valueStr = (row['valor da parcela'] || row['valor'] || row['value'] || '0').trim();
           valueStr = valueStr.replace(/[R$\s]/g, '').replace(',', '.');
           const value = parseFloat(valueStr);
 
-          let dueDate = row.vencimento || row.due_date || row.data_vencimento || '';
-          dueDate = dueDate.trim();
+          let dueDate = (row['vencimento'] || row['due_date'] || row['data_vencimento'] || row['vencimento da primeira'] || '').trim();
           if (dueDate && dueDate.includes('/')) {
             const parts = dueDate.split('/');
             if (parts.length === 3) {
@@ -323,12 +339,13 @@ export default function Boletos() {
             }
           }
 
-          const description = row.descricao || row.description || row.desc || 'Mensalidade de rastreamento';
+          const description = (row['descricao'] || row['description'] || row['desc'] || 'Mensalidade de rastreamento').trim();
 
-          console.log(`Linha ${i + 2}:`, { name, cpfCnpj, value, dueDate });
+          console.log(`Linha ${i + 2}:`, { name, cpfCnpj, value, dueDate, rawRow: row });
 
           if (!name || name.length < 2) {
-            errors.push(`Linha ${i + 2}: Nome inválido ou faltando`);
+            console.error(`Erro linha ${i + 2}: Nome "${name}" inválido. Dados da linha:`, row);
+            errors.push(`Linha ${i + 2}: Nome inválido ou faltando (encontrado: "${name}")`);
             errorCount++;
             continue;
           }
