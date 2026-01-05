@@ -158,12 +158,17 @@ async function createPayments(
     const installmentDate = new Date(dueDate);
     installmentDate.setMonth(installmentDate.getMonth() + i);
 
+    const installmentInfo = `Parcela ${i + 1}/${customer.installments_count}`;
+    const description = customer.description
+      ? `${installmentInfo} - ${customer.description}`
+      : `${installmentInfo} - Proposta ${customer.proposal_number}`;
+
     const payment = {
       customer: customerId,
       billingType: "BOLETO",
       value: customer.installment_value,
       dueDate: installmentDate.toISOString().split("T")[0],
-      description: customer.description || `Parcela ${i + 1}/${customer.installments_count} - Proposta ${customer.proposal_number}`,
+      description: description,
       externalReference: customer.proposal_number,
     };
 
