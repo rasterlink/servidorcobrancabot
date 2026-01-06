@@ -91,6 +91,17 @@ Deno.serve(async (req: Request) => {
     if (action === "create-boleto") {
       const boletoData: CreateBoletoRequest = await req.json();
 
+      // Format phone number (remove special characters)
+      let phone = boletoData.customer.phone || "";
+      let mobilePhone = phone.replace(/\D/g, '');
+
+      // Asaas expects phone in format XXXXXXXXXXX (11 digits) or (XX) XXXXX-XXXX
+      if (mobilePhone.length >= 10) {
+        // Keep only digits for Asaas
+        phone = mobilePhone;
+        mobilePhone = mobilePhone;
+      }
+
       // Check if customer exists in Asas
       let asasCustomerId = null;
       const { data: existingAsasCustomer } = await supabase
@@ -99,18 +110,39 @@ Deno.serve(async (req: Request) => {
         .eq("customer_id", boletoData.customer.id)
         .maybeSingle();
 
+      const customerPayload = {
+        name: boletoData.customer.name,
+        cpfCnpj: boletoData.customer.cpfCnpj,
+        email: boletoData.customer.email,
+        phone: phone,
+        mobilePhone: mobilePhone,
+      };
+
       if (existingAsasCustomer?.asas_customer_id) {
         asasCustomerId = existingAsasCustomer.asas_customer_id;
-      } else {
-        // Create customer in Asas first
-        const customerPayload = {
+
+        // Update customer in Asas to ensure phone is current
+        const asasUpdateResponse = await fetch(`${asasApiUrl}v3/customers/${asasCustomerId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "access_token": asasApiKey,
+          },
+          body: JSON.stringify(customerPayload),
+        });
+
+        if (!asasUpdateResponse.ok) {
+          console.error("Failed to update customer in Asas, but continuing...");
+        }
+
+        // Update in our database too
+        await supabase.from("asas_customers").update({
           name: boletoData.customer.name,
-          cpfCnpj: boletoData.customer.cpfCnpj,
           email: boletoData.customer.email,
           phone: boletoData.customer.phone,
-          mobilePhone: boletoData.customer.phone,
-        };
-
+        }).eq("customer_id", boletoData.customer.id);
+      } else {
+        // Create customer in Asas first
         const asasCustomerResponse = await fetch(`${asasApiUrl}v3/customers`, {
           method: "POST",
           headers: {
