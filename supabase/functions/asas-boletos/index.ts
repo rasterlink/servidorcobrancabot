@@ -121,27 +121,44 @@ Deno.serve(async (req: Request) => {
       if (existingAsasCustomer?.asas_customer_id) {
         asasCustomerId = existingAsasCustomer.asas_customer_id;
 
-        // Update customer in Asas to ensure phone is current
-        const asasUpdateResponse = await fetch(`${asasApiUrl}v3/customers/${asasCustomerId}`, {
-          method: "PUT",
+        // Verify if customer still exists in Asas
+        const asasCheckResponse = await fetch(`${asasApiUrl}v3/customers/${asasCustomerId}`, {
+          method: "GET",
           headers: {
             "Content-Type": "application/json",
             "access_token": asasApiKey,
           },
-          body: JSON.stringify(customerPayload),
         });
 
-        if (!asasUpdateResponse.ok) {
-          console.error("Failed to update customer in Asas, but continuing...");
-        }
+        if (asasCheckResponse.ok) {
+          // Customer exists, update it
+          const asasUpdateResponse = await fetch(`${asasApiUrl}v3/customers/${asasCustomerId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "access_token": asasApiKey,
+            },
+            body: JSON.stringify(customerPayload),
+          });
 
-        // Update in our database too
-        await supabase.from("asas_customers").update({
-          name: boletoData.customer.name,
-          email: boletoData.customer.email,
-          phone: boletoData.customer.phone,
-        }).eq("customer_id", boletoData.customer.id);
-      } else {
+          if (!asasUpdateResponse.ok) {
+            console.error("Failed to update customer in Asas, but continuing...");
+          }
+
+          // Update in our database too
+          await supabase.from("asas_customers").update({
+            name: boletoData.customer.name,
+            email: boletoData.customer.email,
+            phone: boletoData.customer.phone,
+          }).eq("customer_id", boletoData.customer.id);
+        } else {
+          // Customer was deleted in Asas, create a new one
+          console.log("Customer was deleted in Asas, creating new one...");
+          asasCustomerId = null;
+        }
+      }
+
+      if (!asasCustomerId) {
         // Create customer in Asas first
         const asasCustomerResponse = await fetch(`${asasApiUrl}v3/customers`, {
           method: "POST",
@@ -196,15 +213,26 @@ Deno.serve(async (req: Request) => {
           console.error("Failed to enable WhatsApp notifications, but continuing...", notifError);
         }
 
-        // Save to our database
-        await supabase.from("asas_customers").insert({
-          customer_id: boletoData.customer.id,
-          asas_customer_id: asasCustomerId,
-          cpf_cnpj: boletoData.customer.cpfCnpj,
-          name: boletoData.customer.name,
-          email: boletoData.customer.email,
-          phone: boletoData.customer.phone,
-        });
+        // Save to our database or update if exists
+        if (existingAsasCustomer) {
+          // Update existing record with new Asas customer ID
+          await supabase.from("asas_customers").update({
+            asas_customer_id: asasCustomerId,
+            name: boletoData.customer.name,
+            email: boletoData.customer.email,
+            phone: boletoData.customer.phone,
+          }).eq("customer_id", boletoData.customer.id);
+        } else {
+          // Insert new record
+          await supabase.from("asas_customers").insert({
+            customer_id: boletoData.customer.id,
+            asas_customer_id: asasCustomerId,
+            cpf_cnpj: boletoData.customer.cpfCnpj,
+            name: boletoData.customer.name,
+            email: boletoData.customer.email,
+            phone: boletoData.customer.phone,
+          });
+        }
       }
 
       // Create payment (boleto) in Asas
