@@ -112,9 +112,16 @@ export default function Boletos() {
             installmentDate.setMonth(installmentDate.getMonth() + (installment - 1));
             const dueDate = installmentDate.toISOString().split('T')[0];
 
-            const description = installments > 1
-              ? `${formData.description} (${installment}/${installments})`
-              : formData.description;
+            let descriptionParts = [];
+            if (customer.contract_number) descriptionParts.push(`Contrato: ${customer.contract_number}`);
+            if (customer.vehicle_plate) descriptionParts.push(`Placa: ${customer.vehicle_plate}`);
+            if (customer.vehicle_chassis) descriptionParts.push(`Chassi: ${customer.vehicle_chassis}`);
+            descriptionParts.push(formData.description);
+
+            let description = descriptionParts.join(' | ');
+            if (installments > 1) {
+              description += ` (${installment}/${installments})`;
+            }
 
             console.log(`Criando parcela ${installment}/${installments} para ${customer.name} - Vencimento: ${dueDate}`);
 
@@ -339,9 +346,27 @@ export default function Boletos() {
             }
           }
 
-          const description = (row['descricao'] || row['description'] || row['desc'] || 'Mensalidade de rastreamento').trim();
+          const additionalInfo = (row['descricao'] || row['description'] || row['desc'] || '').trim();
 
-          console.log(`Linha ${i + 2}:`, { name, cpfCnpj, value, dueDate, rawRow: row });
+          let installmentsStr = (row['quantidade de parcela'] || row['parcelas'] || row['installments'] || '1').trim();
+          const installmentsCount = parseInt(installmentsStr) || 1;
+
+          console.log(`Cliente: ${name}`);
+          console.log(`Quantidade de parcelas: "${installmentsStr}" -> ${installmentsCount}`);
+          console.log(`Valor da parcela: "${row['valor da parcela']}" -> ${value}`);
+          console.log(`Vencimento: ${dueDate}`);
+
+          let descriptionParts = [];
+          if (contractNumber) descriptionParts.push(`Contrato: ${contractNumber}`);
+          if (vehiclePlate) descriptionParts.push(`Placa: ${vehiclePlate}`);
+          if (vehicleChassis) descriptionParts.push(`Chassi: ${vehicleChassis}`);
+          if (additionalInfo) descriptionParts.push(additionalInfo);
+
+          const baseDescription = descriptionParts.length > 0
+            ? descriptionParts.join(' | ')
+            : 'Mensalidade de rastreamento';
+
+          console.log(`Linha ${i + 2}:`, { name, cpfCnpj, value, dueDate, installmentsCount, description: baseDescription, rawRow: row });
 
           if (!name || name.length < 2) {
             console.error(`Erro linha ${i + 2}: Nome "${name}" inválido. Dados da linha:`, row);
@@ -400,14 +425,20 @@ export default function Boletos() {
             customer = { data: newCustomer };
           }
 
-          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
-          const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          console.log(`=== CRIANDO ${installmentsCount} PARCELA(S) PARA ${name} ===`);
+
+          for (let installment = 1; installment <= installmentsCount; installment++) {
+            const installmentDate = new Date(dueDate);
+            installmentDate.setMonth(installmentDate.getMonth() + (installment - 1));
+            const installmentDueDate = installmentDate.toISOString().split('T')[0];
+
+            const description = installmentsCount > 1
+              ? `${baseDescription} (${installment}/${installmentsCount})`
+              : baseDescription;
+
+            console.log(`Criando parcela ${installment}/${installmentsCount} - Vencimento: ${installmentDueDate}`);
+            console.log('=== DADOS A SEREM ENVIADOS ===');
+            console.log(JSON.stringify({
               customer: {
                 id: customer.data.id,
                 name: customer.data.name,
@@ -420,18 +451,50 @@ export default function Boletos() {
               },
               billingType: 'BOLETO',
               value,
-              dueDate,
+              dueDate: installmentDueDate,
               description,
-              externalReference: `CSV-${Date.now()}-${i}`,
-            }),
-          });
+              externalReference: `CSV-${Date.now()}-${i}-${installment}`,
+              installmentCount: installmentsCount,
+              installmentNumber: installment,
+            }, null, 2));
 
-          if (response.ok) {
-            successCount++;
-          } else {
-            const errorData = await response.json();
-            errors.push(`Linha ${i + 2}: ${errorData.error || 'Erro ao criar boleto'}`);
-            errorCount++;
+            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
+            const response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                customer: {
+                  id: customer.data.id,
+                  name: customer.data.name,
+                  cpfCnpj: customer.data.cpf_cnpj,
+                  email: customer.data.email,
+                  phone: customer.data.phone,
+                  contractNumber: customer.data.contract_number,
+                  vehiclePlate: customer.data.vehicle_plate,
+                  vehicleChassis: customer.data.vehicle_chassis,
+                },
+                billingType: 'BOLETO',
+                value,
+                dueDate: installmentDueDate,
+                description,
+                externalReference: `CSV-${Date.now()}-${i}-${installment}`,
+                installmentCount: installmentsCount,
+                installmentNumber: installment,
+              }),
+            });
+
+            if (response.ok) {
+              successCount++;
+              console.log(`✓ Parcela ${installment}/${installmentsCount} criada com sucesso`);
+            } else {
+              const errorData = await response.json();
+              errors.push(`Linha ${i + 2} - Parcela ${installment}: ${errorData.error || 'Erro ao criar boleto'}`);
+              errorCount++;
+              console.error(`✗ Erro na parcela ${installment}:`, errorData);
+            }
           }
         } catch (error) {
           errors.push(`Linha ${i + 2}: ${error.message}`);
@@ -461,7 +524,7 @@ export default function Boletos() {
   };
 
   const downloadCSVTemplate = () => {
-    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Proposta;Placa;Chassi;Marca;Modelo;Valor da Parcela;Vencimento;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;18149;ABC1234;9C2KF4300PR007083;HONDA;ADV 150;R$ 120,00;31/12/2025;Mensalidade de rastreamento\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;18150;XYZ5678;1HGBH41JXMN109186;YAMAHA;NMAX 160;R$ 150,00;31/12/2025;Mensalidade de rastreamento';
+    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Proposta;Placa;Chassi;Marca;Modelo;Valor da Parcela;Vencimento;quantidade de parcela;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;18149;ABC1234;9C2KF4300PR007083;HONDA;ADV 150;R$ 120,00;31/12/2025;10;contrato rasterlink central 08002970633/1148585841/11967366983\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;18150;XYZ5678;1HGBH41JXMN109186;YAMAHA;NMAX 160;R$ 150,00;31/12/2025;12;contrato rasterlink central 08002970633/1148585841/11967366983';
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
