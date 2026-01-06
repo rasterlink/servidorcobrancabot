@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
 
     if (!ASAS_API_KEY || !ASAS_API_URL) {
       return new Response(
-        JSON.stringify({ error: "Configura\u00e7\u00e3o do Asas n\u00e3o encontrada" }),
+        JSON.stringify({ error: "Configuração do Asas não encontrada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Erro geral:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erro ao processar importa\u00e7\u00e3o" }),
+      JSON.stringify({ error: error.message || "Erro ao processar importação" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -198,7 +198,7 @@ async function createPayments(
       const errorData = await response.json();
       console.error(`Erro ao criar parcela ${i + 1}:`, errorData);
       throw new Error(
-        errorData.errors?.[0]?.description || "Erro ao criar cobran\u00e7a no Asas"
+        errorData.errors?.[0]?.description || "Erro ao criar cobrança no Asas"
       );
     }
 
