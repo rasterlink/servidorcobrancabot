@@ -83,6 +83,14 @@ export default function Boletos() {
       return;
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDateObj = new Date(formData.dueDate);
+    if (dueDateObj < today) {
+      alert('A data de vencimento não pode ser no passado');
+      return;
+    }
+
     console.log('DEBUG - formData completo:', formData);
     console.log('DEBUG - formData.installments:', formData.installments, 'tipo:', typeof formData.installments);
 
@@ -390,6 +398,15 @@ export default function Boletos() {
 
           if (!dueDate || dueDate.length < 8) {
             errors.push(`Linha ${i + 2}: Data de vencimento inválida (${dueDate})`);
+            errorCount++;
+            continue;
+          }
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const dueDateObj = new Date(dueDate);
+          if (dueDateObj < today) {
+            errors.push(`Linha ${i + 2}: Data de vencimento não pode ser no passado (${new Date(dueDate).toLocaleDateString('pt-BR')})`);
             errorCount++;
             continue;
           }
