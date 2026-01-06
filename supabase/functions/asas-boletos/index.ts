@@ -91,20 +91,15 @@ Deno.serve(async (req: Request) => {
     if (action === "create-boleto") {
       const boletoData: CreateBoletoRequest = await req.json();
 
-      // Format phone number (remove special characters)
+      // Format phone number (remove special characters, keep only numbers)
       let phone = boletoData.customer.phone || "";
       let mobilePhone = phone.replace(/\D/g, '');
 
-      // Add country code if not present (Brazil = 55)
-      if (mobilePhone.length === 10 || mobilePhone.length === 11) {
-        // Only DDD + number, add country code
-        mobilePhone = '55' + mobilePhone;
-      } else if (mobilePhone.length === 13 && !mobilePhone.startsWith('55')) {
-        // Already has country code but not starting with 55
-        mobilePhone = '55' + mobilePhone;
+      // Remove country code if present (Asaas uses only DDD + number)
+      if (mobilePhone.startsWith('55') && mobilePhone.length > 11) {
+        mobilePhone = mobilePhone.substring(2);
       }
 
-      // Format for Asaas API
       phone = mobilePhone;
 
       // Check if customer exists in Asas
