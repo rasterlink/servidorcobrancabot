@@ -11,6 +11,7 @@ export default function Boletos() {
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [sendingReminders, setSendingReminders] = useState(false);
   const [formData, setFormData] = useState({
     value: '',
     dueDate: '',
@@ -534,6 +535,51 @@ export default function Boletos() {
     URL.revokeObjectURL(url);
   };
 
+  const handleSendReminders = async () => {
+    if (!confirm('Deseja enviar lembretes e cobranças agora?')) {
+      return;
+    }
+
+    setSendingReminders(true);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/boleto-reminders`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        let message = 'Processamento concluído!\n\n';
+        message += `LEMBRETES (5 dias antes):\n✓ ${data.reminders.sent} enviados\n✗ ${data.reminders.failed} erros\n\n`;
+        message += `COBRANÇAS (após vencimento):\n✓ ${data.collections.sent} enviadas\n✗ ${data.collections.failed} erros`;
+
+        if (data.reminders.errors.length > 0 || data.collections.errors.length > 0) {
+          const allErrors = [...data.reminders.errors, ...data.collections.errors];
+          if (allErrors.length <= 5) {
+            message += '\n\nErros:\n' + allErrors.join('\n');
+          } else {
+            message += '\n\nPrimeiros 5 erros:\n' + allErrors.slice(0, 5).join('\n');
+          }
+        }
+
+        alert(message);
+        loadBoletos();
+      } else {
+        const errorData = await response.json();
+        alert('Erro ao enviar mensagens: ' + (errorData.error || 'Erro desconhecido'));
+      }
+    } catch (error) {
+      alert('Erro ao enviar mensagens: ' + error.message);
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
   return (
     <div className="boletos-container">
       <div className="boletos-header">
@@ -566,6 +612,14 @@ export default function Boletos() {
               Importar CSV
             </button>
           </label>
+          <button
+            className="btn-secondary"
+            onClick={handleSendReminders}
+            disabled={loading || sendingReminders}
+          >
+            <RefreshCw size={20} />
+            {sendingReminders ? 'Enviando...' : 'Enviar Lembretes'}
+          </button>
           <button
             className="btn-primary"
             onClick={() => setShowForm(!showForm)}

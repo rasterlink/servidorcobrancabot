@@ -159,6 +159,12 @@ Deno.serve(async (req: Request) => {
         dueDate: boletoData.dueDate,
         description: fullDescription,
         externalReference: boletoData.externalReference,
+        interest: {
+          value: 10.0,
+        },
+        fine: {
+          value: 2.0,
+        },
       };
 
       const asasPaymentResponse = await fetch(`${asasApiUrl}v3/payments`, {
