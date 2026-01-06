@@ -32,6 +32,9 @@ Deno.serve(async (req: Request) => {
   try {
     const { customers } = await req.json() as { customers: Customer[] };
 
+    console.log("=== DADOS RECEBIDOS NA FUNCTION ===");
+    console.log(JSON.stringify(customers, null, 2));
+
     if (!customers || customers.length === 0) {
       return new Response(
         JSON.stringify({ error: "Nenhum cliente fornecido" }),
@@ -44,7 +47,7 @@ Deno.serve(async (req: Request) => {
 
     if (!ASAS_API_KEY || !ASAS_API_URL) {
       return new Response(
-        JSON.stringify({ error: "Configuração do Asas não encontrada" }),
+        JSON.stringify({ error: "Configura\u00e7\u00e3o do Asas n\u00e3o encontrada" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -131,7 +134,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Erro geral:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erro ao processar importação" }),
+      JSON.stringify({ error: error.message || "Erro ao processar importa\u00e7\u00e3o" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -143,9 +146,10 @@ async function createPayments(
   customerId: string,
   customer: Customer
 ) {
-  console.log(`Criando pagamentos para ${customer.name}:`);
-  console.log(`  Quantidade de parcelas: ${customer.installments_count}`);
-  console.log(`  Valor da parcela: ${customer.installment_value}`);
+  console.log(`=== CRIANDO PAGAMENTOS PARA ${customer.name} ===`);
+  console.log(`Quantidade de parcelas recebida: ${customer.installments_count} (tipo: ${typeof customer.installments_count})`);
+  console.log(`Valor da parcela: ${customer.installment_value}`);
+  console.log(`Data de vencimento: ${customer.due_date}`);
 
   const dueDateParts = customer.due_date.split("/");
   let dueDate = new Date();
@@ -157,6 +161,9 @@ async function createPayments(
       parseInt(dueDateParts[0])
     );
   }
+
+  console.log(`Data de vencimento parseada: ${dueDate.toISOString()}`);
+  console.log(`Iniciando loop de ${customer.installments_count} parcelas`);
 
   for (let i = 0; i < customer.installments_count; i++) {
     const installmentDate = new Date(dueDate);
@@ -183,7 +190,7 @@ async function createPayments(
       }
     };
 
-    console.log(`Criando parcela ${i + 1}/${customer.installments_count}:`, payment);
+    console.log(`Criando parcela ${i + 1}/${customer.installments_count}:`, JSON.stringify(payment));
 
     const response = await fetch(`${apiUrl}/v3/payments`, {
       method: "POST",
@@ -198,11 +205,13 @@ async function createPayments(
       const errorData = await response.json();
       console.error(`Erro ao criar parcela ${i + 1}:`, errorData);
       throw new Error(
-        errorData.errors?.[0]?.description || "Erro ao criar cobrança no Asas"
+        errorData.errors?.[0]?.description || "Erro ao criar cobran\u00e7a no Asas"
       );
     }
 
     const paymentData = await response.json();
     console.log(`Parcela ${i + 1} criada com sucesso:`, paymentData.id);
   }
+
+  console.log(`=== FINALIZOU CRIA\u00c7\u00c3O DE ${customer.installments_count} PARCELAS ===`);
 }

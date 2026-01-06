@@ -51,8 +51,9 @@ export default function ImportCustomers() {
       console.log(`Cliente: ${customer['Nome/Razão Social']}`);
       console.log(`  Quantidade de parcelas: "${installmentsRaw}" -> ${installmentsCount}`);
       console.log(`  Valor da parcela: "${valueRaw}" -> ${installmentValue}`);
+      console.log(`  Vencimento: ${customer['Vencimento']}`);
 
-      customers.push({
+      const customerData = {
         cpf_cnpj: customer['CNPJ/CPF'].replace(/\D/g, ''),
         name: customer['Nome/Razão Social'],
         email: customer['email'] || '',
@@ -68,8 +69,13 @@ export default function ImportCustomers() {
         installments_count: installmentsCount,
         due_date: customer['Vencimento'] || customer['Vencimento da primeira'] || '',
         description: customer['descricao'] || ''
-      });
+      };
+
+      customers.push(customerData);
     }
+
+    console.log('=== DADOS A SEREM ENVIADOS ===');
+    console.log(JSON.stringify(customers, null, 2));
 
     return customers;
   };
