@@ -165,6 +165,42 @@ Deno.serve(async (req: Request) => {
 
         asasCustomerId = asasCustomer.id;
 
+        // Enable WhatsApp notifications for the new customer
+        try {
+          const notificationsResponse = await fetch(`${asasApiUrl}v3/customers/${asasCustomerId}/notifications`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "access_token": asasApiKey,
+            },
+          });
+
+          if (notificationsResponse.ok) {
+            const notificationsData = await notificationsResponse.json();
+            const notifications = notificationsData.data || [];
+
+            // Update all notifications to enable WhatsApp
+            for (const notification of notifications) {
+              await fetch(`${asasApiUrl}v3/notifications/${notification.id}`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "access_token": asasApiKey,
+                },
+                body: JSON.stringify({
+                  enabled: true,
+                  emailEnabledForCustomer: notification.emailEnabledForCustomer || false,
+                  smsEnabledForCustomer: notification.smsEnabledForCustomer || false,
+                  whatsappEnabledForCustomer: true,
+                  phoneCallEnabledForCustomer: notification.phoneCallEnabledForCustomer || false,
+                }),
+              });
+            }
+          }
+        } catch (notifError) {
+          console.error("Failed to enable WhatsApp notifications, but continuing...", notifError);
+        }
+
         // Save to our database
         await supabase.from("asas_customers").insert({
           customer_id: boletoData.customer.id,
