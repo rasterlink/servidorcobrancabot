@@ -89,7 +89,12 @@ Deno.serve(async (req: Request) => {
 
     // Create subscription (assinatura)
     if (action === "create-subscription") {
+      console.log("\n========================================");
+      console.log("INICIANDO CRIAÇÃO DE ASSINATURA");
+      console.log("========================================");
+
       const subscriptionData: CreateBoletoRequest = await req.json();
+      console.log("Dados recebidos:", JSON.stringify(subscriptionData, null, 2));
 
       // Format phone number
       let phone = subscriptionData.customer.phone || "";
@@ -100,6 +105,7 @@ Deno.serve(async (req: Request) => {
       }
 
       phone = mobilePhone;
+      console.log("Telefone formatado:", { original: subscriptionData.customer.phone, formatted: mobilePhone });
 
       // Check if customer exists in Asas
       let asasCustomerId = null;
@@ -154,6 +160,9 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!asasCustomerId) {
+        console.log("\n--- CRIANDO CLIENTE NO ASAAS ---");
+        console.log("Payload do cliente:", JSON.stringify(customerPayload, null, 2));
+
         const asasCustomerResponse = await fetch(`${asasApiUrl}v3/customers`, {
           method: "POST",
           headers: {
@@ -163,13 +172,18 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify(customerPayload),
         });
 
+        console.log("Status da criação do cliente:", asasCustomerResponse.status);
+
         const asasCustomer = await asasCustomerResponse.json();
+        console.log("Resposta da criação do cliente:", JSON.stringify(asasCustomer, null, 2));
 
         if (!asasCustomerResponse.ok) {
+          console.error("ERRO ao criar cliente no Asaas!");
           throw new Error(asasCustomer.errors?.[0]?.description || "Failed to create customer in Asas");
         }
 
         asasCustomerId = asasCustomer.id;
+        console.log("✓ Cliente criado no Asaas! ID:", asasCustomerId);
 
         // Enable WhatsApp notifications
         try {
@@ -261,6 +275,10 @@ Deno.serve(async (req: Request) => {
         },
       };
 
+      console.log("\n--- CRIANDO ASSINATURA NO ASAAS ---");
+      console.log("URL:", `${asasApiUrl}v3/subscriptions`);
+      console.log("Payload:", JSON.stringify(subscriptionPayload, null, 2));
+
       const asasSubscriptionResponse = await fetch(`${asasApiUrl}v3/subscriptions`, {
         method: "POST",
         headers: {
@@ -270,11 +288,20 @@ Deno.serve(async (req: Request) => {
         body: JSON.stringify(subscriptionPayload),
       });
 
+      console.log("Status da resposta:", asasSubscriptionResponse.status);
+      console.log("Status OK?", asasSubscriptionResponse.ok);
+
       const asasSubscription = await asasSubscriptionResponse.json();
+      console.log("Resposta do Asaas:", JSON.stringify(asasSubscription, null, 2));
 
       if (!asasSubscriptionResponse.ok) {
+        console.error("ERRO AO CRIAR ASSINATURA NO ASAAS!");
+        console.error("Errors:", asasSubscription.errors);
         throw new Error(asasSubscription.errors?.[0]?.description || "Failed to create subscription in Asas");
       }
+
+      console.log("✓ Assinatura criada no Asaas com sucesso!");
+      console.log("Subscription ID:", asasSubscription.id);
 
       // Save subscription to database
       const { data: subscription } = await supabase
