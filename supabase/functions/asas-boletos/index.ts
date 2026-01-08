@@ -262,6 +262,10 @@ Deno.serve(async (req: Request) => {
           value: 2.0,
         },
         postalService: false,
+        discount: {
+          value: 0,
+          dueDateLimitDays: 0,
+        },
       };
 
       const asasPaymentResponse = await fetch(`${asasApiUrl}v3/payments`, {
@@ -311,9 +315,57 @@ Deno.serve(async (req: Request) => {
           external_reference: boletoData.externalReference,
           installment_count: boletoData.installmentCount || 1,
           installment_number: boletoData.installmentNumber || 1,
+          pix_code: asasPayment.pixQrCodeId || null,
+          reminder_enabled: true,
+          reminder_interval_days: 3,
         })
         .select()
         .single();
+
+      // Send boleto via WhatsApp automatically
+      try {
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("phone, name")
+          .eq("id", boletoData.customer.id)
+          .single();
+
+        if (customer?.phone) {
+          const phoneNumber = customer.phone.replace(/\D/g, '');
+
+          let message = `Olá ${customer.name}! 🔔\n\n`;
+          message += `Sua cobrança está disponível:\n\n`;
+          message += `💰 Valor: R$ ${boletoData.value.toFixed(2)}\n`;
+          message += `📅 Vencimento: ${new Date(boletoData.dueDate).toLocaleDateString('pt-BR')}\n\n`;
+
+          if (asasPayment.bankSlipUrl) {
+            message += `🔗 Boleto: ${asasPayment.bankSlipUrl}\n\n`;
+          }
+
+          if (asasPayment.invoiceUrl) {
+            message += `🧾 PIX Copia e Cola: Acesse o link do boleto para ver o código PIX\n\n`;
+          }
+
+          message += `Qualquer dúvida, estamos à disposição! 😊`;
+
+          const avisaAppToken = Deno.env.get("AVISAAPP_TOKEN")!;
+          const avisaAppUrl = Deno.env.get("AVISAAPP_API_URL")!;
+
+          await fetch(`${avisaAppUrl}/whatsapp/send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${avisaAppToken}`,
+            },
+            body: JSON.stringify({
+              number: phoneNumber,
+              message: message,
+            }),
+          });
+        }
+      } catch (whatsappError) {
+        console.error("Failed to send WhatsApp message:", whatsappError);
+      }
 
       return new Response(JSON.stringify({ boleto, asasPayment }), {
         headers: {
