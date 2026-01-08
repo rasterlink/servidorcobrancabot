@@ -468,6 +468,27 @@ export default function Boletos() {
           }, null, 2));
 
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-subscription`;
+
+          console.log(`\n=== TENTANDO CRIAR ASSINATURA (Linha ${i + 2}) ===`);
+          console.log('Payload:', {
+            customer: {
+              id: customer.data.id,
+              name: customer.data.name,
+              cpfCnpj: customer.data.cpf_cnpj,
+              email: customer.data.email,
+              phone: customer.data.phone,
+              contractNumber: customer.data.contract_number,
+              vehiclePlate: customer.data.vehicle_plate,
+              vehicleChassis: customer.data.vehicle_chassis,
+            },
+            billingType: 'BOLETO',
+            value,
+            dueDate: firstDueDate,
+            description: baseDescription,
+            externalReference: `SUB-${Date.now()}-${i}`,
+            installmentCount: installmentsCount,
+          });
+
           const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -494,14 +515,24 @@ export default function Boletos() {
             }),
           });
 
+          console.log('Response Status:', response.status);
+          const responseData = await response.json();
+          console.log('Response Data:', responseData);
+
           if (response.ok) {
-            successCount++;
-            console.log(`✓ Assinatura criada com sucesso - ${installmentsCount} parcelas mensais`);
+            if (responseData.error) {
+              errors.push(`Linha ${i + 2}: ${responseData.error}`);
+              errorCount++;
+              console.error(`✗ Erro na resposta (mas status OK):`, responseData.error);
+            } else {
+              successCount++;
+              console.log(`✓ Assinatura criada com sucesso - ${installmentsCount} parcelas mensais`);
+              console.log('Subscription ID:', responseData.asasSubscription?.id);
+            }
           } else {
-            const errorData = await response.json();
-            errors.push(`Linha ${i + 2}: ${errorData.error || 'Erro ao criar assinatura'}`);
+            errors.push(`Linha ${i + 2}: ${responseData.error || 'Erro ao criar assinatura'}`);
             errorCount++;
-            console.error(`✗ Erro na assinatura:`, errorData);
+            console.error(`✗ Erro na assinatura:`, responseData);
           }
         } catch (error) {
           errors.push(`Linha ${i + 2}: ${error.message}`);
