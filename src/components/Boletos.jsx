@@ -443,20 +443,38 @@ export default function Boletos() {
             customer = { data: newCustomer };
           }
 
-          console.log(`=== CRIANDO ${installmentsCount} PARCELA(S) PARA ${name} ===`);
+          console.log(`=== CRIANDO ASSINATURA PARA ${name} COM ${installmentsCount} PARCELA(S) ===`);
 
-          for (let installment = 1; installment <= installmentsCount; installment++) {
-            const installmentDate = new Date(dueDate);
-            installmentDate.setMonth(installmentDate.getMonth() + (installment - 1));
-            const installmentDueDate = installmentDate.toISOString().split('T')[0];
+          const firstDueDate = new Date(dueDate).toISOString().split('T')[0];
 
-            const description = installmentsCount > 1
-              ? `${baseDescription} (${installment}/${installmentsCount})`
-              : baseDescription;
+          console.log('=== DADOS DA ASSINATURA ===');
+          console.log(JSON.stringify({
+            customer: {
+              id: customer.data.id,
+              name: customer.data.name,
+              cpfCnpj: customer.data.cpf_cnpj,
+              email: customer.data.email,
+              phone: customer.data.phone,
+              contractNumber: customer.data.contract_number,
+              vehiclePlate: customer.data.vehicle_plate,
+              vehicleChassis: customer.data.vehicle_chassis,
+            },
+            billingType: 'BOLETO',
+            value,
+            dueDate: firstDueDate,
+            description: baseDescription,
+            externalReference: `SUB-${Date.now()}-${i}`,
+            installmentCount: installmentsCount,
+          }, null, 2));
 
-            console.log(`Criando parcela ${installment}/${installmentsCount} - Vencimento: ${installmentDueDate}`);
-            console.log('=== DADOS A SEREM ENVIADOS ===');
-            console.log(JSON.stringify({
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-subscription`;
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
               customer: {
                 id: customer.data.id,
                 name: customer.data.name,
@@ -469,50 +487,21 @@ export default function Boletos() {
               },
               billingType: 'BOLETO',
               value,
-              dueDate: installmentDueDate,
-              description,
-              externalReference: `CSV-${Date.now()}-${i}-${installment}`,
+              dueDate: firstDueDate,
+              description: baseDescription,
+              externalReference: `SUB-${Date.now()}-${i}`,
               installmentCount: installmentsCount,
-              installmentNumber: installment,
-            }, null, 2));
+            }),
+          });
 
-            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/asas-boletos?action=create-boleto`;
-            const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                customer: {
-                  id: customer.data.id,
-                  name: customer.data.name,
-                  cpfCnpj: customer.data.cpf_cnpj,
-                  email: customer.data.email,
-                  phone: customer.data.phone,
-                  contractNumber: customer.data.contract_number,
-                  vehiclePlate: customer.data.vehicle_plate,
-                  vehicleChassis: customer.data.vehicle_chassis,
-                },
-                billingType: 'BOLETO',
-                value,
-                dueDate: installmentDueDate,
-                description,
-                externalReference: `CSV-${Date.now()}-${i}-${installment}`,
-                installmentCount: installmentsCount,
-                installmentNumber: installment,
-              }),
-            });
-
-            if (response.ok) {
-              successCount++;
-              console.log(`✓ Parcela ${installment}/${installmentsCount} criada com sucesso`);
-            } else {
-              const errorData = await response.json();
-              errors.push(`Linha ${i + 2} - Parcela ${installment}: ${errorData.error || 'Erro ao criar boleto'}`);
-              errorCount++;
-              console.error(`✗ Erro na parcela ${installment}:`, errorData);
-            }
+          if (response.ok) {
+            successCount++;
+            console.log(`✓ Assinatura criada com sucesso - ${installmentsCount} parcelas mensais`);
+          } else {
+            const errorData = await response.json();
+            errors.push(`Linha ${i + 2}: ${errorData.error || 'Erro ao criar assinatura'}`);
+            errorCount++;
+            console.error(`✗ Erro na assinatura:`, errorData);
           }
         } catch (error) {
           errors.push(`Linha ${i + 2}: ${error.message}`);
@@ -520,12 +509,14 @@ export default function Boletos() {
         }
       }
 
-      let message = `Importação concluída!\n${successCount} boletos gerados com sucesso\n${errorCount} erros`;
+      let message = `Importação concluída!\n${successCount} assinatura(s) criada(s) com sucesso\n${errorCount} erro(s)`;
       if (errors.length > 0 && errors.length <= 10) {
         message += '\n\nErros:\n' + errors.join('\n');
       } else if (errors.length > 10) {
         message += '\n\nPrimeiros 10 erros:\n' + errors.slice(0, 10).join('\n');
       }
+
+      message += '\n\nObs: Os boletos serão gerados automaticamente todo mês pelo Asaas!';
 
       alert(message);
 
