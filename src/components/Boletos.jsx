@@ -270,6 +270,10 @@ export default function Boletos() {
 
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(separator);
+
+      const hasData = values.some(v => v && v.trim() !== '');
+      if (!hasData) continue;
+
       const row = {};
       headers.forEach((header, index) => {
         row[header] = values[index] ? values[index].trim() : '';
@@ -332,7 +336,7 @@ export default function Boletos() {
           ).trim();
           cpfCnpj = cpfCnpj.replace(/[.\-/\s]/g, '');
 
-          const email = row['email'] || '';
+          const email = row['email'] || row['e-mail'] || '';
           const phone = (row['telefone celular'] || row['telefone'] || row['phone'] || row['fone'] || '').trim();
           const contractNumber = (row['proposta'] || row['numero do contrato'] || row['contrato'] || '').trim();
           const vehiclePlate = (row['placa'] || row['plate'] || '').trim();
@@ -357,8 +361,21 @@ export default function Boletos() {
 
           const additionalInfo = (row['descricao'] || row['description'] || row['desc'] || '').trim();
 
-          let installmentsStr = (row['quantidade de parcela'] || row['parcelas'] || row['installments'] || '1').trim();
-          const installmentsCount = parseInt(installmentsStr) || 1;
+          let installmentsStr = (row['quantidade de parcela'] || row['parcelas'] || row['installments'] || '').trim();
+          let installmentsCount = parseInt(installmentsStr) || 0;
+
+          if (!installmentsCount || installmentsCount === 0) {
+            let totalValueStr = (row['valor total'] || row['total'] || '0').trim();
+            totalValueStr = totalValueStr.replace(/[R$\s]/g, '').replace(',', '.');
+            const totalValue = parseFloat(totalValueStr);
+
+            if (totalValue > 0 && value > 0) {
+              installmentsCount = Math.round(totalValue / value);
+              console.log(`Calculado automaticamente: ${installmentsCount} parcelas (${totalValue} / ${value})`);
+            } else {
+              installmentsCount = 1;
+            }
+          }
 
           console.log(`Cliente: ${name}`);
           console.log(`Quantidade de parcelas: "${installmentsStr}" -> ${installmentsCount}`);
@@ -406,7 +423,7 @@ export default function Boletos() {
           today.setHours(0, 0, 0, 0);
           const dueDateObj = new Date(dueDate);
           if (dueDateObj < today) {
-            errors.push(`Linha ${i + 2}: Data de vencimento não pode ser no passado (${new Date(dueDate).toLocaleDateString('pt-BR')})`);
+            errors.push(`Linha ${i + 2}: Data de vencimento ${new Date(dueDate).toLocaleDateString('pt-BR')} está no passado. Use uma data futura.`);
             errorCount++;
             continue;
           }
@@ -418,12 +435,14 @@ export default function Boletos() {
             .maybeSingle();
 
           if (!customer.data) {
+            const customerEmail = email || `cliente_${cpfCnpj}@placeholder.com`;
+
             const { data: newCustomer, error: createError } = await supabase
               .from('customers')
               .insert({
                 name,
                 cpf_cnpj: cpfCnpj,
-                email,
+                email: customerEmail,
                 phone,
                 contract_number: contractNumber,
                 vehicle_plate: vehiclePlate,
@@ -564,7 +583,7 @@ export default function Boletos() {
   };
 
   const downloadCSVTemplate = () => {
-    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Proposta;Placa;Chassi;Marca;Modelo;Valor da Parcela;Vencimento;quantidade de parcela;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;18149;ABC1234;9C2KF4300PR007083;HONDA;ADV 150;R$ 120,00;31/12/2025;10;contrato rasterlink central 08002970633/1148585841/11967366983\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;18150;XYZ5678;1HGBH41JXMN109186;YAMAHA;NMAX 160;R$ 150,00;31/12/2025;12;contrato rasterlink central 08002970633/1148585841/11967366983';
+    const template = 'Nome/Razão Social;CNPJ/CPF;email;Telefone Celular;Proposta;Placa;Chassi;Marca;Modelo;Valor da Parcela;Vencimento;quantidade de parcela;VALOR TOTAL;descricao\nJoão Silva;123.456.789-00;joao@email.com;(11) 99999-9999;18149;ABC1234;9C2KF4300PR007083;HONDA;ADV 150;R$ 120,00;31/12/2025;10;R$ 1.200,00;contrato rasterlink central 08002970633/1148585841/11967366983\nMaria Santos;987.654.321-00;maria@email.com;(11) 98888-8888;18150;XYZ5678;1HGBH41JXMN109186;YAMAHA;NMAX 160;R$ 150,00;31/12/2025;;R$ 1.800,00;contrato rasterlink central 08002970633/1148585841/11967366983';
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
