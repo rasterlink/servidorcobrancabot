@@ -31,7 +31,11 @@ Deno.serve(async (req: Request) => {
       throw new Error('Phone and message are required')
     }
 
-    const cleanPhone = phone.replace(/\D/g, '')
+    let cleanPhone = phone.replace(/\D/g, '')
+
+    if (!cleanPhone.startsWith('55') && cleanPhone.length === 11) {
+      cleanPhone = '55' + cleanPhone
+    }
 
     const response = await fetch(`${avisaappApiUrl}/v2/actions/sendMessage`, {
       method: 'POST',
