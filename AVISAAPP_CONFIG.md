@@ -7,7 +7,7 @@ A integração com AvisaApp foi configurada com sucesso para envio de mensagens 
 As credenciais da AvisaApp foram adicionadas ao arquivo `.env`:
 
 - **Token**: EnhfQtEyxoBTURwUr0tpW3NJiGoIq5z8pb38P4sGolwOhPbgVODBcywgnr5L
-- **URL da API**: https://www.avisaapp.com.br/api
+- **URL da API**: https://www.avisaapi.com.br/api
 
 ## Como Funciona
 
@@ -58,7 +58,7 @@ Requer autenticação com o token do Supabase.
 ## Detalhes Técnicos da Integração
 
 ### API da AvisaApp (v2)
-- **Endpoint**: `https://www.avisaapp.com.br/api/v2/actions/sendMessage`
+- **Endpoint**: `https://www.avisaapi.com.br/api/v2/actions/sendMessage`
 - **Método**: POST
 - **Headers**:
   - `Content-Type: application/json`
