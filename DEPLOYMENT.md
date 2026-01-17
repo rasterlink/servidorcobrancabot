@@ -66,9 +66,9 @@ VITE_SUPABASE_ANON_KEY=sua_chave_publica
 # Asaas (opcional - para integração de boletos)
 ASAAS_API_KEY=sua_chave_asaas
 
-# AvisaApp (opcional - para envio de WhatsApp)
-AVISAAPP_TOKEN=seu_token_avisaapp
-AVISAAPP_API_URL=https://www.avisaapp.com.br/api
+# AvisaAPI (opcional - para envio de WhatsApp)
+AVISAAPP_TOKEN=seu_token_avisaapi
+AVISAAPP_API_URL=https://www.avisaapi.com.br/api
 ```
 
 ## Deploy no Railway
@@ -223,7 +223,7 @@ Para problemas específicos:
 - **Build/Deploy**: Verifique logs no Railway
 - **Banco de Dados**: Consulte documentação Supabase
 - **WhatsApp**: Veja `WHATSAPP_SETUP.md`
-- **AvisaApp**: Veja `AVISAAPP_CONFIG.md`
+- **AvisaAPI**: Veja `AVISAAPP_CONFIG.md`
 
 ## Checklist de Deploy
 

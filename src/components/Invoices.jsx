@@ -600,7 +600,7 @@ exemplo@email.com,150.50,2025-01-15,1,2025,123456789,https://link-do-pdf.com`
                   onChange={(e) => setSendOptions({...sendOptions, sendWhatsApp: e.target.checked})}
                   disabled={!selectedInvoice.customer.phone}
                 />
-                Enviar por WhatsApp via AvisaApp
+                Enviar por WhatsApp via AvisaAPI
                 {selectedInvoice.customer.phone ? ` (${selectedInvoice.customer.phone})` : ' (sem telefone)'}
               </label>
             </div>

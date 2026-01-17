@@ -1,10 +1,10 @@
-# Configuração AvisaApp
+# Configuração AvisaAPI
 
-A integração com AvisaApp foi configurada com sucesso para envio de mensagens de WhatsApp.
+A integração com AvisaAPI foi configurada com sucesso para envio de mensagens de WhatsApp.
 
 ## Credenciais Configuradas
 
-As credenciais da AvisaApp foram adicionadas ao arquivo `.env`:
+As credenciais da AvisaAPI foram adicionadas ao arquivo `.env`:
 
 - **Token**: EnhfQtEyxoBTURwUr0tpW3NJiGoIq5z8pb38P4sGolwOhPbgVODBcywgnr5L
 - **URL da API**: https://www.avisaapi.com.br/api
@@ -15,14 +15,14 @@ As credenciais da AvisaApp foram adicionadas ao arquivo `.env`:
 Foi criada uma Edge Function no Supabase chamada `avisaapp-send` que:
 - Recebe o telefone e a mensagem
 - Limpa o número de telefone (remove caracteres especiais)
-- Envia a mensagem via API da AvisaApp
+- Envia a mensagem via API da AvisaAPI
 - Retorna o resultado da operação
 
 ### 2. Interface de Envio
 No componente de Boletos (`Invoices.jsx`):
 - Ao clicar em "Enviar" em um boleto, abre um modal
 - Você pode escolher enviar por Email e/ou WhatsApp
-- Se escolher WhatsApp, a mensagem é enviada automaticamente via AvisaApp
+- Se escolher WhatsApp, a mensagem é enviada automaticamente via AvisaAPI
 - O histórico de envios é registrado na tabela `sending_history`
 
 ### 3. Formato da Mensagem
@@ -37,7 +37,7 @@ Olá [Nome do Cliente]! Seu boleto no valor de R$ [Valor] está disponível. Ven
 2. Clique no botão de enviar (ícone de envelope) ao lado de um boleto
 3. Marque as opções desejadas:
    - Email (apenas log no console por enquanto)
-   - WhatsApp via AvisaApp (envio real)
+   - WhatsApp via AvisaAPI (envio real)
 4. Clique em "Enviar"
 
 ## Requisitos
@@ -57,7 +57,7 @@ Requer autenticação com o token do Supabase.
 
 ## Detalhes Técnicos da Integração
 
-### API da AvisaApp (v2)
+### API da AvisaAPI (v2)
 - **Endpoint**: `https://www.avisaapi.com.br/api/v2/actions/sendMessage`
 - **Método**: POST
 - **Headers**:

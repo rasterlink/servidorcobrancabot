@@ -22,7 +22,7 @@ Deno.serve(async (req: Request) => {
     const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL')
 
     if (!avisaappToken || !avisaappApiUrl) {
-      throw new Error('AvisaApp credentials not configured')
+      throw new Error('AvisaAPI credentials not configured')
     }
 
     const { phone, message }: SendMessageRequest = await req.json()
@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`AvisaApp API error: ${response.status} - ${errorText}`)
+      throw new Error(`AvisaAPI error: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json()
