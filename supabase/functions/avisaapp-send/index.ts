@@ -37,24 +37,33 @@ Deno.serve(async (req: Request) => {
       cleanPhone = '55' + cleanPhone
     }
 
-    const response = await fetch(`${avisaappApiUrl}/v2/actions/sendMessage`, {
+    const payload = {
+      number: cleanPhone,
+      message: message,
+    }
+
+    console.log('Sending to AvisaAPI:', JSON.stringify(payload))
+    console.log('Using URL:', `${avisaappApiUrl}/actions/sendMessage`)
+
+    const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${avisaappToken}`,
       },
-      body: JSON.stringify({
-        numero: cleanPhone,
-        mensagem: message,
-      }),
+      body: JSON.stringify(payload),
     })
 
+    console.log('Response status:', response.status)
+
+    const responseText = await response.text()
+    console.log('Response body:', responseText)
+
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`AvisaAPI error: ${response.status} - ${errorText}`)
+      throw new Error(`AvisaAPI error: ${response.status} - ${responseText}`)
     }
 
-    const result = await response.json()
+    const result = JSON.parse(responseText)
 
     return new Response(
       JSON.stringify({

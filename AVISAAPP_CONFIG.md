@@ -6,8 +6,9 @@ A integração com AvisaAPI foi configurada com sucesso para envio de mensagens 
 
 As credenciais da AvisaAPI foram adicionadas ao arquivo `.env`:
 
-- **Token**: EnhfQtEyxoBTURwUr0tpW3NJiGoIq5z8pb38P4sGolwOhPbgVODBcywgnr5L
+- **Token**: hgcWVPKSl4hXrdzhuIllHjHFaA3i4ziOK4caUbsXO4QaEBLPOnfwqOoZe8RO
 - **URL da API**: https://www.avisaapi.com.br/api
+- **Endpoint**: /actions/sendMessage (sem /v2)
 
 ## Como Funciona
 
@@ -57,33 +58,41 @@ Requer autenticação com o token do Supabase.
 
 ## Detalhes Técnicos da Integração
 
-### API da AvisaAPI (v2)
-- **Endpoint**: `https://www.avisaapi.com.br/api/v2/actions/sendMessage`
+### API da AvisaAPI
+- **Endpoint**: `https://www.avisaapi.com.br/api/actions/sendMessage`
 - **Método**: POST
 - **Headers**:
   - `Content-Type: application/json`
   - `Authorization: Bearer [TOKEN]`
-- **Body** (campos em português):
-  - `numero`: Número do telefone (apenas dígitos)
-  - `mensagem`: Texto da mensagem
+- **Body** (campos em inglês):
+  - `number`: Número do telefone (apenas dígitos)
+  - `message`: Texto da mensagem
 
 ### Exemplo de Requisição
 ```json
 {
-  "numero": "11987654321",
-  "mensagem": "Sua mensagem aqui"
+  "number": "5511987654321",
+  "message": "Sua mensagem aqui"
 }
 ```
 
 ### Resposta de Sucesso
 ```json
 {
-  "code": 200,
+  "status": true,
+  "message": "Message sent successfully",
   "data": {
-    "Details": "Sent",
-    "Id": "3EB0ED6DA975B496C1D71A",
-    "Timestamp": "2026-01-02T16:15:11.064936354Z"
-  },
-  "success": true
+    "number": "5511987654321@s.whatsapp.net",
+    "message": "Sua mensagem aqui",
+    "response": {
+      "code": 200,
+      "data": {
+        "Details": "Sent",
+        "Id": "3EB0ED6DA975B496C1D71A",
+        "Timestamp": "2026-01-19T13:23:41.339321217Z"
+      },
+      "success": true
+    }
+  }
 }
 ```
