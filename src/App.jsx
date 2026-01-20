@@ -4,9 +4,10 @@ import Customers from './components/Customers'
 import Invoices from './components/Invoices'
 import WhatsApp from './components/WhatsApp'
 import BulkMessages from './components/BulkMessages'
+import CSVBulkMessages from './components/CSVBulkMessages'
 import Boletos from './components/Boletos'
 import ImportCustomers from './components/ImportCustomers'
-import { FileText, Users, LayoutDashboard, MessageCircle, Send, DollarSign, Upload } from 'lucide-react'
+import { FileText, Users, LayoutDashboard, MessageCircle, Send, DollarSign, Upload, Sheet } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -74,6 +75,13 @@ function App() {
             <Upload size={20} />
             Importar Clientes
           </button>
+          <button
+            className={`nav-button ${activeTab === 'csv-bulk' ? 'active' : ''}`}
+            onClick={() => setActiveTab('csv-bulk')}
+          >
+            <Sheet size={20} />
+            Envio CSV
+          </button>
         </nav>
 
         <main className="main-content">
@@ -84,6 +92,7 @@ function App() {
           {activeTab === 'bulk' && <BulkMessages />}
           {activeTab === 'boletos' && <Boletos />}
           {activeTab === 'import' && <ImportCustomers />}
+          {activeTab === 'csv-bulk' && <CSVBulkMessages />}
         </main>
       </div>
     </div>
