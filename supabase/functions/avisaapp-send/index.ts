@@ -21,8 +21,13 @@ Deno.serve(async (req: Request) => {
     const avisaappToken = Deno.env.get('AVISAAPP_TOKEN')
     const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL')
 
+    console.log('Environment check:')
+    console.log('- AVISAAPP_TOKEN exists:', !!avisaappToken)
+    console.log('- AVISAAPP_TOKEN length:', avisaappToken?.length || 0)
+    console.log('- AVISAAPP_API_URL:', avisaappApiUrl)
+
     if (!avisaappToken || !avisaappApiUrl) {
-      throw new Error('AvisaAPI credentials not configured')
+      throw new Error(`AvisaAPI credentials not configured - Token: ${!!avisaappToken}, URL: ${!!avisaappApiUrl}`)
     }
 
     const { phone, message }: SendMessageRequest = await req.json()
@@ -42,8 +47,39 @@ Deno.serve(async (req: Request) => {
       message: message,
     }
 
-    console.log('Sending to AvisaAPI:', JSON.stringify(payload))
-    console.log('Using URL:', `${avisaappApiUrl}/actions/sendMessage`)
+    console.log('=== DEBUG INFO ===')
+    console.log('Env AVISAAPP_TOKEN:', avisaappToken ? 'SET' : 'NOT SET')
+    console.log('Env AVISAAPP_API_URL:', avisaappApiUrl)
+    console.log('Payload:', JSON.stringify(payload))
+    console.log('Full URL:', `${avisaappApiUrl}/actions/sendMessage`)
+
+    console.log('Request headers:', {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${avisaappToken.substring(0, 10)}...`,
+    })
+    console.log('Request body:', JSON.stringify(payload))
+
+    // DEBUG: Return what we would send
+    return new Response(
+      JSON.stringify({
+        debug: true,
+        willSend: {
+          url: `${avisaappApiUrl}/actions/sendMessage`,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${avisaappToken.substring(0, 20)}...`,
+          },
+          body: payload,
+        },
+      }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
 
     const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
       method: 'POST',
@@ -55,6 +91,7 @@ Deno.serve(async (req: Request) => {
     })
 
     console.log('Response status:', response.status)
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()))
 
     const responseText = await response.text()
     console.log('Response body:', responseText)
