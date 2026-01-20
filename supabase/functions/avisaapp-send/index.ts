@@ -43,6 +43,8 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log('Sending message to:', cleanPhone)
+    console.log('Payload:', JSON.stringify(payload))
+    console.log('API URL:', `${avisaappApiUrl}/actions/sendMessage`)
 
     const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
       method: 'POST',
