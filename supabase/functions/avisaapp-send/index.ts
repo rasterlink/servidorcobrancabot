@@ -21,13 +21,8 @@ Deno.serve(async (req: Request) => {
     const avisaappToken = Deno.env.get('AVISAAPP_TOKEN')
     const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL')
 
-    console.log('Environment check:')
-    console.log('- AVISAAPP_TOKEN exists:', !!avisaappToken)
-    console.log('- AVISAAPP_TOKEN length:', avisaappToken?.length || 0)
-    console.log('- AVISAAPP_API_URL:', avisaappApiUrl)
-
     if (!avisaappToken || !avisaappApiUrl) {
-      throw new Error(`AvisaAPI credentials not configured - Token: ${!!avisaappToken}, URL: ${!!avisaappApiUrl}`)
+      throw new Error('AvisaAPI credentials not configured')
     }
 
     const { phone, message }: SendMessageRequest = await req.json()
@@ -47,39 +42,7 @@ Deno.serve(async (req: Request) => {
       message: message,
     }
 
-    console.log('=== DEBUG INFO ===')
-    console.log('Env AVISAAPP_TOKEN:', avisaappToken ? 'SET' : 'NOT SET')
-    console.log('Env AVISAAPP_API_URL:', avisaappApiUrl)
-    console.log('Payload:', JSON.stringify(payload))
-    console.log('Full URL:', `${avisaappApiUrl}/actions/sendMessage`)
-
-    console.log('Request headers:', {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${avisaappToken.substring(0, 10)}...`,
-    })
-    console.log('Request body:', JSON.stringify(payload))
-
-    // DEBUG: Return what we would send
-    return new Response(
-      JSON.stringify({
-        debug: true,
-        willSend: {
-          url: `${avisaappApiUrl}/actions/sendMessage`,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${avisaappToken.substring(0, 20)}...`,
-          },
-          body: payload,
-        },
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+    console.log('Sending message to:', cleanPhone)
 
     const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
       method: 'POST',
@@ -90,11 +53,8 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(payload),
     })
 
-    console.log('Response status:', response.status)
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()))
-
     const responseText = await response.text()
-    console.log('Response body:', responseText)
+    console.log('Response:', response.status, responseText)
 
     if (!response.ok) {
       throw new Error(`AvisaAPI error: ${response.status} - ${responseText}`)
