@@ -38,8 +38,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = {
-      number: cleanPhone,
-      message: message,
+      numero: cleanPhone,
+      mensagem: message,
     }
 
     console.log('Sending message to:', cleanPhone)
