@@ -18,12 +18,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const avisaappToken = Deno.env.get('AVISAAPP_TOKEN')
-    const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL')
+    const avisaappToken = Deno.env.get('AVISAAPP_TOKEN') || 'zyeaHd8EppnOrsdp9ZbsKTFJtcHVLsAY5WUNrecUDKCLmcTeZNie8hifKoqv'
+    const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL') || 'https://www.avisaapi.com.br/api'
 
-    if (!avisaappToken || !avisaappApiUrl) {
-      throw new Error('AvisaAPI credentials not configured')
-    }
+    console.log('Token available:', !!avisaappToken)
+    console.log('API URL available:', !!avisaappApiUrl)
 
     const { phone, message }: SendMessageRequest = await req.json()
 
@@ -40,26 +39,53 @@ Deno.serve(async (req: Request) => {
     const payload = {
       number: cleanPhone,
       message: message,
+      mensagem: message,
     }
 
-    console.log('Sending message to:', cleanPhone)
-    console.log('Payload:', JSON.stringify(payload))
-    console.log('API URL:', `${avisaappApiUrl}/actions/sendMessage`)
+    const fullUrl = `${avisaappApiUrl}/actions/sendMessage`
+    const bodyString = JSON.stringify(payload)
 
-    const response = await fetch(`${avisaappApiUrl}/actions/sendMessage`, {
+    console.log('Sending message to:', cleanPhone)
+    console.log('Payload:', payload)
+    console.log('Body string:', bodyString)
+    console.log('API URL:', fullUrl)
+    console.log('Token (first 10):', avisaappToken.substring(0, 10))
+    console.log('Token length:', avisaappToken.length)
+
+    const response = await fetch(fullUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${avisaappToken}`,
       },
-      body: JSON.stringify(payload),
+      body: bodyString,
     })
 
     const responseText = await response.text()
     console.log('Response:', response.status, responseText)
+    console.log('Request body sent:', JSON.stringify(payload))
 
     if (!response.ok) {
-      throw new Error(`AvisaAPI error: ${response.status} - ${responseText}`)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `AvisaAPI error: ${response.status} - ${responseText}`,
+          debug: {
+            sentPayload: payload,
+            sentBody: JSON.stringify(payload),
+            apiUrl: `${avisaappApiUrl}/actions/sendMessage`,
+            responseStatus: response.status,
+            responseBody: responseText,
+          }
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
     }
 
     const result = JSON.parse(responseText)
