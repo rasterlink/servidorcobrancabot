@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -18,8 +20,28 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const avisaappToken = Deno.env.get('AVISAAPP_TOKEN') || 'zyeaHd8EppnOrsdp9ZbsKTFJtcHVLsAY5WUNrecUDKCLmcTeZNie8hifKoqv'
-    const avisaappApiUrl = Deno.env.get('AVISAAPP_API_URL') || 'https://www.avisaapi.com.br/api'
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const { data: connection, error: dbError } = await supabase
+      .from('whatsapp_connections')
+      .select('session_data')
+      .eq('name', 'avisaapp')
+      .eq('is_active', true)
+      .eq('status', 'connected')
+      .maybeSingle()
+
+    if (dbError || !connection) {
+      throw new Error('AvisaApp connection not found or inactive')
+    }
+
+    const avisaappToken = connection.session_data?.token
+    const avisaappApiUrl = connection.session_data?.url || 'https://www.avisaapi.com.br/api'
+
+    if (!avisaappToken) {
+      throw new Error('AvisaApp token not configured')
+    }
 
     console.log('Token available:', !!avisaappToken)
     console.log('API URL available:', !!avisaappApiUrl)
