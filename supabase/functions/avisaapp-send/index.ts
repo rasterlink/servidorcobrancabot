@@ -61,7 +61,6 @@ Deno.serve(async (req: Request) => {
     const payload = {
       number: cleanPhone,
       message: message,
-      mensagem: message,
     }
 
     const fullUrl = `${avisaappApiUrl}/actions/sendMessage`
