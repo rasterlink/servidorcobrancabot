@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
-import { FileText, Users, DollarSign, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { FileText, Users, DollarSign, AlertCircle, CheckCircle, Clock, Copy, Webhook } from 'lucide-react'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -14,9 +14,14 @@ function Dashboard() {
     recentInvoices: []
   })
   const [loading, setLoading] = useState(true)
+  const [webhookLogs, setWebhookLogs] = useState([])
+  const [copiedWebhook, setCopiedWebhook] = useState(false)
+
+  const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/avisaapp-webhook`
 
   useEffect(() => {
     loadStats()
+    loadWebhookLogs()
   }, [])
 
   async function loadStats() {
@@ -47,6 +52,27 @@ function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function loadWebhookLogs() {
+    try {
+      const { data, error } = await supabase
+        .from('webhook_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5)
+
+      if (error) throw error
+      setWebhookLogs(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar logs:', error)
+    }
+  }
+
+  function copyWebhookUrl() {
+    navigator.clipboard.writeText(webhookUrl)
+    setCopiedWebhook(true)
+    setTimeout(() => setCopiedWebhook(false), 2000)
   }
 
   if (loading) {
@@ -115,6 +141,51 @@ function Dashboard() {
           <div className="stat-info">
             <h3>{stats.overdueInvoices}</h3>
             <p>Vencidos</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="webhook-section">
+        <h3><Webhook size={20} /> Configuração do Webhook AvisaApp</h3>
+        <div className="webhook-info">
+          <div className="webhook-url-container">
+            <p className="webhook-label">URL do Webhook:</p>
+            <div className="webhook-url-box">
+              <code>{webhookUrl}</code>
+              <button onClick={copyWebhookUrl} className="copy-btn" title="Copiar URL">
+                {copiedWebhook ? <CheckCircle size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+          </div>
+
+          <div className="webhook-instructions">
+            <h4>Como configurar:</h4>
+            <ol>
+              <li>Acesse o painel do AvisaApp em <a href="https://www.avisaapi.com.br" target="_blank" rel="noopener noreferrer">avisaapi.com.br</a></li>
+              <li>Vá em <strong>Configurações</strong> ou <strong>Webhooks</strong></li>
+              <li>Cole a URL acima no campo de webhook</li>
+              <li>Salve as configurações</li>
+              <li>Envie uma mensagem de teste para verificar se está funcionando</li>
+            </ol>
+          </div>
+
+          <div className="webhook-logs">
+            <h4>Últimos webhooks recebidos ({webhookLogs.length}):</h4>
+            {webhookLogs.length === 0 ? (
+              <p className="empty-message">Nenhum webhook recebido ainda. Configure o webhook no AvisaApp.</p>
+            ) : (
+              <div className="logs-list">
+                {webhookLogs.map(log => (
+                  <div key={log.id} className="log-item">
+                    <div className="log-header">
+                      <span className="log-type">{log.event_type}</span>
+                      <span className="log-time">{new Date(log.created_at).toLocaleString('pt-BR')}</span>
+                    </div>
+                    <pre className="log-payload">{JSON.stringify(log.payload, null, 2)}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

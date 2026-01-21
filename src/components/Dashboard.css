@@ -61,6 +61,166 @@
   font-size: 0.95rem;
 }
 
+.webhook-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  margin-bottom: 2rem;
+}
+
+.webhook-section h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.webhook-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.webhook-url-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.webhook-label {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.webhook-url-box {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.webhook-url-box code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #495057;
+  word-break: break-all;
+}
+
+.copy-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.copy-btn:hover {
+  background: #2980b9;
+}
+
+.webhook-instructions {
+  background: #e3f2fd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #2196f3;
+}
+
+.webhook-instructions h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1976d2;
+}
+
+.webhook-instructions ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #37474f;
+}
+
+.webhook-instructions li {
+  margin-bottom: 0.5rem;
+}
+
+.webhook-instructions a {
+  color: #1976d2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.webhook-instructions a:hover {
+  text-decoration: underline;
+}
+
+.webhook-logs {
+  margin-top: 1rem;
+}
+
+.webhook-logs h4 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.log-item {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.log-type {
+  font-weight: 600;
+  color: #2c3e50;
+  background: #e3f2fd;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.log-time {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.log-payload {
+  background: #ffffff;
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  margin: 0;
+  color: #495057;
+  border: 1px solid #e9ecef;
+}
+
 .recent-invoices {
   background: white;
   border-radius: 12px;
